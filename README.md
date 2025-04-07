@@ -85,7 +85,9 @@ This was also published on [makerworld](https://makerworld.com/en/models/1212476
 [PrettyOTA](https://github.com/LostInCompilation/PrettyOTA.git)
 
 ## License
-This project is licensed under the MIT License
+This project is licensed under my own license
+
+## [Discord](https://discord.gg/vpcPMjV8)
 
 ## Contact
 If you have any questions or suggestions, you can:
