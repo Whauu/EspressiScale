@@ -1,7 +1,14 @@
-Copyright (c) 2025 Hasse Gudmestad.
+Copyright (c) [2025] [Hasse Gudmestad]
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+Permission is hereby granted to anyone obtaining a copy of this software and associated documentation to use, copy, modify, and distribute the Software, provided that the following conditions are met:
 
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+- The original copyright notice and this permission notice must be included in all copies or substantial portions of the Software.
+- Proper attribution must be given to Hasse Gudmestad as the original author in all uses, copies, modifications, and/or distributions of the Software. If the Software is incorporated into a product or service, such attribution must be clearly stated in the accompanying documentation.
+- Commercial use of the Software is prohibited without prior explicit written permission from Hasse Gudmestad. Commercial use includes, but is not limited to, sale, distribution for profit, or integration into commercial products or services.
+- The Software may not be redistributed under a different name or with a different logo. All trademarks, names, and visual identities associated with the Software shall remain unchanged.
+- All modified versions of the Software must be clearly marked as modified, and must not be misrepresented as being the original Software.
+- Failure to comply with these terms will result in an automatic termination of the granted permissions.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL HASSE GUDMESTAD BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+This license constitutes the entire agreement between you and Hasse Gudmestad regarding the Software and supersedes all prior or contemporaneous understandings or agreements regarding the Software.
