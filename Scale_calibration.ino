@@ -38,7 +38,7 @@
 
 HX711 scale;
 
-float calibration_factor = 4200; 
+float calibration_factor = 3910; 
 
 void setup() {
   Serial.begin(9600);
@@ -48,6 +48,8 @@ void setup() {
   Serial.println("Press + or a to increase calibration factor");
   Serial.println("Press - or z to decrease calibration factor");
   
+  pinMode(6, OUTPUT);
+  digitalWrite(6, HIGH); // Power the HX711
   scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
   scale.set_scale();
   scale.tare(); //Reset the scale to 0
@@ -74,5 +76,7 @@ void loop() {
       calibration_factor += 10;
     else if(temp == '-' || temp == 'z')
       calibration_factor -= 10;
+    else if(temp == 't')
+      scale.tare(); // Tare the scale when 't' is entered
   }
 }
