@@ -11,7 +11,7 @@ EspressiScale is a minimalist and affordable espresso scale designed to provide 
 ## Makerworld
 This was also published on [makerworld](https://makerworld.com/en/models/1212476-espressiscale-small-minimalist-espresso-scale#profileId-1227630) for easy 3D printing.
 
-## Bill of Materials (BOM)
+## Bill of Materials V1 (BOM)
 
 | Quantity | Component                   | Details/Notes                                      |
 |----------|-----------------------------|----------------------------------------------------|
@@ -41,27 +41,25 @@ This was also published on [makerworld](https://makerworld.com/en/models/1212476
 
    Make sure you have PlatformIO installed in Visual Studio. You'll also need espressif platform installed.
    
-3. **Clone the repository:**
+3. **Download and install [GitHub](https://docs.github.com/en/desktop/installing-and-authenticating-to-github-desktop/installing-github-desktop) Desktop:**
 
-   ```bash
-   git clone https://github.com/whauu/EspressiScale.git
+4. **Clone repository with GitHub Desktop**
 
-4. **Navigate to the project folder**
+5. **Open project in Visual Studio Code**
 
-   ```bash
-   cd EspressiScale
+6. **Navigate to PlatformIO tab**
 
-5. **Open project in PlatformIO**
+7. **Open dropdown menu esp32s3box**
    
-6. **Erase flash**
+8. **Erase flash**
    
-7. **Build filesystem**
+9. **Build filesystem**
    
-8. **Upload filesystem**
+10. **Upload filesystem**
    
-9. **Build**
+11. **Build**
 
-10. **Upload**
+12. **Upload**
 
 
 
@@ -75,8 +73,10 @@ This was also published on [makerworld](https://makerworld.com/en/models/1212476
   - The scale will automatically enter deep sleep after 5min with no use
 
 **Update:**
-   - Update using "scaleIP"/update
-   - Build updated project
+   - Pull update from GitHub
+   - Build updated project in VScode
+   - Navigate to EspressiScale\.pio\build\esp32s3box
+   - Open browser and go to "scaleIP"/update
    - Upload the firmware.bin file
      <p align="center">
 <img src="https://github.com/user-attachments/assets/cd5b869b-26ec-4d18-aa3c-554c78ec7306" alt="Screenshot" />
