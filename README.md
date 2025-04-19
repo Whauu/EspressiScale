@@ -84,6 +84,14 @@ This was also published on [makerworld](https://makerworld.com/en/models/1212476
 
 [PrettyOTA](https://github.com/LostInCompilation/PrettyOTA.git)
 
+## Calibrating purchased scale
+- Connect the scale to wifi
+- Follow installation instructions
+- Navigate to the scale.cpp file
+- Adjust the calibration factor in incriments of 10 
+(lower calibration factor usually adjusts the measured weight up)
+- Currently the best way to do it is updating the scale for each adjustment, but it should be calibrated well enough for only needing one adjustment
+
 ## License
 This project is licensed under my own license
 
