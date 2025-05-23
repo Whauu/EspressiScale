@@ -81,6 +81,26 @@ inline void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t
   lv_disp_flush_ready(disp);
 }
 
+const gpio_num_t holdPins[] = {
+  GPIO_NUM_14,
+  GPIO_NUM_15,
+  GPIO_NUM_16,
+  GPIO_NUM_17,
+  GPIO_NUM_18
+};
+
+static void deep_sleep()
+{
+  for (auto pin : holdPins) {
+    gpio_reset_pin(pin);
+    gpio_set_direction(pin, GPIO_MODE_OUTPUT);
+    gpio_set_level(pin, 0);
+    gpio_hold_en(pin);
+  }
+  esp_wifi_stop();
+  esp_deep_sleep_start();
+}
+
 static void lv_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data)
 {
   if (touch.read())
@@ -272,10 +292,7 @@ void loop()
     {
       Serial.println("Entering deep sleep due to inactivity...");
       // Flush the screen to black before going to deep sleep
-      lv_obj_clean(lv_scr_act());
-      lv_obj_set_style_bg_color(lv_scr_act(), lv_color_black(), LV_PART_MAIN);
-      lv_refr_now(NULL); // Refresh the display immediately
-      esp_deep_sleep_start();
+      deep_sleep();
     }
   }
   else
@@ -287,17 +304,12 @@ void loop()
 
   float batteryStatus = getBatteryVoltage(); // Update the battery status
   
-  if (batteryStatus < 3) // Check if battery voltage is below 3V
+  if (batteryStatus < 2.8) // Check if battery voltage is below 3V
   {
     Serial.println("Battery voltage is low. Entering deep sleep...");
     // Display low battery message before going to deep sleep
     lv_label_set_text(label_weight, "Low battery");
-    lv_refr_now(NULL); // Refresh the display immediately
     delay(2000); // Wait for 2 seconds to show the message
-    // Flush the screen to black before going to deep sleep
-    lv_obj_clean(lv_scr_act());
-    lv_obj_set_style_bg_color(lv_scr_act(), lv_color_black(), LV_PART_MAIN);
-    lv_refr_now(NULL); // Refresh the display immediately
-    esp_deep_sleep_start();
+    deep_sleep();
   }
 }
