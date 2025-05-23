@@ -95,7 +95,7 @@ This was also published on [makerworld](https://makerworld.com/en/models/1212476
 ## License
 This project is licensed under my own license
 
-## [Discord](https://discord.gg/vpcPMjV8)
+## [Discord](https://discord.gg/syZnh8SXb7)
 
 ## Contact
 If you have any questions or suggestions, you can:
