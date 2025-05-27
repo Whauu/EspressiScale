@@ -1,10 +1,35 @@
 #include <HX711.h>
 #include <Arduino.h>
+#include <EEPROM.h>
 
 #define LOADCELL_DOUT_PIN  4
 #define LOADCELL_SCK_PIN   3
 #define LOADCELL_POWER_PIN 6
-float calibration_factor = 4220.0; // Put your own calibration factor here
+
+float calibration_factor; // Default value
+const int CALIBRATION_FACTOR_ADDR = 0; // EEPROM address
+
+void setupCalibrationFactor() {
+  EEPROM.begin(512);
+  EEPROM.get(CALIBRATION_FACTOR_ADDR, calibration_factor);
+
+  // Check if calibration_factor is uninitialized (e.g., NaN or out of expected range)
+  if (isnan(calibration_factor) || calibration_factor < 0.1f || calibration_factor > 100000.0f) {
+    Serial.begin(921600);
+    while (!Serial) { delay(10); }
+    Serial.println("Enter calibration factor:");
+    while (Serial.available() == 0) { delay(10); }
+    calibration_factor = Serial.parseFloat();
+    EEPROM.put(CALIBRATION_FACTOR_ADDR, calibration_factor);
+    EEPROM.commit();
+    Serial.print("Calibration factor set to: ");
+    Serial.println(calibration_factor);
+  } else {
+    Serial.begin(921600);
+    Serial.print("Loaded calibration factor from EEPROM: ");
+    Serial.println(calibration_factor);
+  }
+}
 
 HX711 scale;
 

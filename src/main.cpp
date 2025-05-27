@@ -148,7 +148,7 @@ void setup()
   for (auto pin : holdPins) {
     gpio_hold_dis(pin);
   }
-
+  setupCalibrationFactor();
   touch_eg = xEventGroupCreate();
 
   esp_sleep_enable_ext0_wakeup(GPIO_NUM_12, 0); // Touch interrupt is connected to GPIO 12
