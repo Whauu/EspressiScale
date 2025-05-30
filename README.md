@@ -49,6 +49,17 @@ This was also published on [makerworld](https://makerworld.com/en/models/1212476
 
 Note: To change calibration factor you'll have to reinstall EspressiScale
 
+
+## Update:
+   - Download latest version [here](https://doc.espressiscale.com)
+   - Open browser and go to "scaleIP"/update
+   - Upload the firmware.bin file
+     <p align="center">
+<img src="https://github.com/user-attachments/assets/cd5b869b-26ec-4d18-aa3c-554c78ec7306" alt="Screenshot" />
+</p>
+
+[PrettyOTA](https://github.com/LostInCompilation/PrettyOTA.git)
+
 ## Usage
 **Touch controls:**
 - **Left Display:** Starts and stops timer
@@ -58,25 +69,9 @@ Note: To change calibration factor you'll have to reinstall EspressiScale
   - Touch the display anywhere to wake it up
   - The scale will automatically enter deep sleep after 5min with no use
 
-**Update:**
-   - Pull update from GitHub
-   - Build updated project in VScode
-   - Navigate to EspressiScale\.pio\build\esp32s3box
-   - Open browser and go to "scaleIP"/update
-   - Upload the firmware.bin file
-     <p align="center">
-<img src="https://github.com/user-attachments/assets/cd5b869b-26ec-4d18-aa3c-554c78ec7306" alt="Screenshot" />
-</p>
-
-[PrettyOTA](https://github.com/LostInCompilation/PrettyOTA.git)
-
-## Calibrating purchased scale
-- Connect the scale to wifi
+    
+## Re-Calibrating purchased scale
 - Follow installation instructions
-- Navigate to the scale.cpp file
-- Adjust the calibration factor in incriments of 10 
-(lower calibration factor usually adjusts the measured weight up)
-- Currently the best way to do it is updating the scale for each adjustment, but it should be calibrated well enough for only needing one adjustment
 
 ## License
 This project is licensed under my own license
@@ -86,4 +81,4 @@ This project is licensed under my own license
 ## Contact
 If you have any questions or suggestions, you can:
 - Open an issue in the GitHub repository
-- Contact me directly at [whauu@espressiscale.com]
+- Contact me directly at [hasse@espressiscale.com]
