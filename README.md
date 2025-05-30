@@ -37,31 +37,17 @@ This was also published on [makerworld](https://makerworld.com/en/models/1212476
 
 ## Installation
 
-1. **PlatformIO setup in Visual Studio:**
+1. Open [this](doc.espressiscale.com) website in chrome
+2. Connect your scale and hold down boot while pressing res once, then releasing boot
+3. Press calibration button, selecting your scale (jtag), hit "install calibration tool"
+4. Once done, press res button on the esp and open "logs & console"
+(Take note of your calibration factor)
+5. Follow steps 2, 3 and 4, but for "install"
+6. If you see "calibration factor 0.00", press reset device at bootom right of window
+7. Input your calibration factor and hit enter (This should save it permanently)
+8. You're done :)
 
-   Make sure you have PlatformIO installed in Visual Studio. You'll also need espressif platform installed.
-   
-3. **Download and install [GitHub](https://docs.github.com/en/desktop/installing-and-authenticating-to-github-desktop/installing-github-desktop) Desktop:**
-
-4. **Clone repository with GitHub Desktop**
-
-5. **Open project in Visual Studio Code**
-
-6. **Navigate to PlatformIO tab**
-
-7. **Open dropdown menu esp32s3box**
-   
-8. **Erase flash**
-   
-9. **Build filesystem**
-   
-10. **Upload filesystem**
-   
-11. **Build**
-
-12. **Upload**
-
-
+Note: To change calibration factor you'll have to reinstall EspressiScale
 
 ## Usage
 **Touch controls:**
