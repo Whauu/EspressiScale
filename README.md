@@ -37,7 +37,7 @@ This was also published on [makerworld](https://makerworld.com/en/models/1212476
 
 ## Installation
 
-1. Open [this](doc.espressiscale.com) website in chrome
+1. Open [this](https://doc.espressiscale.com) website in chrome
 2. Connect your scale and hold down boot while pressing res once, then releasing boot
 3. Press calibration button, selecting your scale (jtag), hit "install calibration tool"
 4. Once done, press res button on the esp and open "logs & console"
