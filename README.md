@@ -43,7 +43,7 @@ This was also published on [makerworld](https://makerworld.com/en/models/1212476
 4. Once done, press res button on the esp and open "logs & console"
 (Take note of your calibration factor)
 5. Follow steps 2, 3 and 4, but for "install"
-6. If you see "calibration factor 0.00", press reset device at bootom right of window
+6. If you see "calibration factor 0.00", press reset device at bottom right of window
 7. Input your calibration factor and hit enter (This should save it permanently)
 8. You're done :)
 
