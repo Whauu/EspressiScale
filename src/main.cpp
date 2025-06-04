@@ -13,6 +13,7 @@
 #include "Wire.h"
 #include "wifiManager.h"
 #include <PrettyOTA.h>
+#include <ESPmDNS.h>
 
 #ifndef BOARD_HAS_PSRAM
 #error "Please turn on PSRAM option to OPI PSRAM"
@@ -23,6 +24,8 @@ String header;
 
 AsyncWebServer  server(80); // Server on port 80 (HTTP)
 PrettyOTA       OTAUpdates;
+
+const char* DNS_ADDRESS = "EspressiScale";
 
 static const uint16_t screenWidth = 294 * 2; // screenWidth = 294 * 2;
 static const uint16_t screenHeight = 126;
@@ -133,14 +136,24 @@ void startWifi(void * parameter){
   wifiManager.setConnectRetries(10);
   wifiManager.autoConnect("EspressiScale");
 
-  Serial.print("IP Address: ");
-  Serial.println(WiFi.localIP());
+  // Wait for WiFi to be connected before proceeding
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(100);
+  }
+
+  MDNS.begin(DNS_ADDRESS);
+
+  Serial.println("PrettyOTA can be accessed at: http://" + String(DNS_ADDRESS) + ".local/update");
+  Serial.println("And at: http://" + WiFi.localIP().toString() + "/update");
 
   OTAUpdates.Begin(&server);
+  OTAUpdates.SetAppVersion("1.1.0");
+  OTAUpdates.SetHardwareID("EspressiScale DIY");
+  OTAUpdates.SetSerialOutputStream(&Serial);
+  OTAUpdates.SetAppBuildTimeAndDate(__TIME__, __DATE__);
   server.begin();
-  OTAUpdates.OverwriteAppVersion("1.0.0");
 
-vTaskDelete(NULL);
+  vTaskDelete(NULL);
 }
 
 void setup()
@@ -225,8 +238,8 @@ void setup()
 
 void loop()
 {
-  // Read filtered weight
-  float currentWeight = medianFilter();
+  delay(100); // Small delay to allow other tasks to run
+  float currentWeight = medianFilter();  // Read filtered weight
 
   // Update the label with the current weight
   char weight_str[16];
