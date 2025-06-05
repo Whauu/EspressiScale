@@ -14,6 +14,7 @@
 #include "wifiManager.h"
 #include <PrettyOTA.h>
 #include <ESPmDNS.h>
+#include "ads1220.h"
 
 #ifndef BOARD_HAS_PSRAM
 #error "Please turn on PSRAM option to OPI PSRAM"
@@ -161,7 +162,7 @@ void setup()
   for (auto pin : holdPins) {
     gpio_hold_dis(pin);
   }
-  setupCalibrationFactor();
+  setup_ads(); // Initialize the ADS1220 ADC
   touch_eg = xEventGroupCreate();
 
   esp_sleep_enable_ext0_wakeup(GPIO_NUM_12, 0); // Touch interrupt is connected to GPIO 12
@@ -238,9 +239,9 @@ void setup()
 
 void loop()
 {
-  delay(100); // Small delay to allow other tasks to run
-  float currentWeight = medianFilter();  // Read filtered weight
-
+// Read filtered weight
+  float currentWeight = get_weight();
+  Serial.printf("Current weight: %.2f g\n", currentWeight);
   // Update the label with the current weight
   char weight_str[16];
   snprintf(weight_str, sizeof(weight_str), "%.1f g", currentWeight);
