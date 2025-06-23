@@ -12,7 +12,6 @@
 #include "TouchLib.h"
 #include "Wire.h"
 #include "wifiManager.h"
-#include <PrettyOTA.h>
 #include <ESPmDNS.h>
 
 #ifndef BOARD_HAS_PSRAM
@@ -22,8 +21,6 @@
 WiFiManager wifiManager;
 String header;
 
-AsyncWebServer  server(80); // Server on port 80 (HTTP)
-PrettyOTA       OTAUpdates;
 #define DNS_ADDRESS "espressiscale"
 
 static const uint16_t screenWidth = 294 * 2; // screenWidth = 294 * 2;
@@ -134,19 +131,7 @@ static void lv_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data
 void startWifi(void * parameter){
   wifiManager.setConnectRetries(10);
   wifiManager.autoConnect("EspressiScale");
-
   MDNS.begin(DNS_ADDRESS);
-
-  Serial.println("PrettyOTA can be accessed at: http://" + String(DNS_ADDRESS) + ".local/update");
-  Serial.println("And at: http://" + WiFi.localIP().toString() + "/update");
-
-  OTAUpdates.Begin(&server);
-  OTAUpdates.SetAppVersion("1.1.0");
-  OTAUpdates.SetHardwareID("EspressiScale DIY");
-  OTAUpdates.SetSerialOutputStream(&Serial);
-  OTAUpdates.SetAppBuildTimeAndDate(__TIME__, __DATE__);
-  server.begin();
-
 vTaskDelete(NULL);
 }
 
