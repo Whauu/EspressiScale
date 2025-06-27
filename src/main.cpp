@@ -13,6 +13,11 @@
 #include "Wire.h"
 #include "wifiManager.h"
 #include <ESPmDNS.h>
+#include <WebServer.h>
+#include <HTTPUpdateServer.h>
+#include <LittleFS.h>
+#include <HTTPClient.h>
+#include <HTTPUpdate.h>
 
 #ifndef BOARD_HAS_PSRAM
 #error "Please turn on PSRAM option to OPI PSRAM"
@@ -21,7 +26,15 @@
 WiFiManager wifiManager;
 String header;
 
+const char* versionURL  = "https://raw.githubusercontent.com/Whauu/EspressiScale_web/main/webflash/version.txt";
+const char* host = "raw.githubusercontent.com";
+const uint16_t port = 443;
+const char* uri  = "/Whauu/EspressiScale_web/main/webflash/firmware.bin";
+
 #define DNS_ADDRESS "espressiscale"
+#define FW_VERSION "1.2.0"
+WebServer server(80);
+HTTPUpdateServer httpUpdater;
 
 static const uint16_t screenWidth = 294 * 2; // screenWidth = 294 * 2;
 static const uint16_t screenHeight = 126;
@@ -132,6 +145,51 @@ void startWifi(void * parameter){
   wifiManager.setConnectRetries(10);
   wifiManager.autoConnect("EspressiScale");
   MDNS.begin(DNS_ADDRESS);
+  LittleFS.begin();
+
+  // serve static UI
+  server.on("/", HTTP_GET, []() {
+    auto f = LittleFS.open("/index.html", "r");
+    server.streamFile(f, "text/html");
+    f.close();
+  });
+
+  // client-side check: return the GitHub version string
+  server.on("/checkRemote", HTTP_GET, []() {
+    HTTPClient http;
+    http.begin(versionURL);
+    http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+    int code = http.GET();
+    if (code == HTTP_CODE_OK) {
+      String latest = http.getString();
+      latest.trim();
+      server.send(200, "text/plain", latest);
+    } else {
+      server.send(502, "text/plain", "error");
+    }
+    http.end();
+  });
+  
+  // trigger the ESP32 to download & flash the new firmware
+  server.on("/updateRemote", HTTP_GET, []() {
+    WiFiClientSecure client;
+    client.setInsecure(); // Disable SSL certificate verification for simplicity
+    t_httpUpdate_return ret = httpUpdate.update(client, host, port, uri, FW_VERSION);
+    switch (ret) {
+      case HTTP_UPDATE_OK:
+        // never reached; device reboots
+        break;
+      case HTTP_UPDATE_FAILED:
+        server.send(500, "text/plain", "Update failed: " + String(httpUpdate.getLastError()));
+        break;
+      case HTTP_UPDATE_NO_UPDATES:
+        server.send(204, "text/plain", "No update available");
+        break;
+    }
+  });
+
+  server.begin();
+
 vTaskDelete(NULL);
 }
 
@@ -217,6 +275,7 @@ void setup()
 
 void loop()
 {
+  server.handleClient();
   // Read filtered weight
   float currentWeight = medianFilter();
 

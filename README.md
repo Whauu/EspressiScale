@@ -49,9 +49,8 @@ This was also published on [makerworld](https://makerworld.com/en/models/1212476
 
 Note: To change calibration factor you'll have to reinstall EspressiScale
 
-
 ## Update:
-Under construction
+![til](https://raw.githubusercontent.com/Whauu/EspressiScale/main/IMG_1073.GIF)
 
 ## Usage
 **Touch controls:**
