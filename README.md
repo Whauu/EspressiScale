@@ -49,16 +49,8 @@ This was also published on [makerworld](https://makerworld.com/en/models/1212476
 
 Note: To change calibration factor you'll have to reinstall EspressiScale
 
-
 ## Update:
-   - Download latest version [here](https://doc.espressiscale.com)
-   - Open browser and go to "scaleIP"/update
-   - Upload the firmware.bin file
-     <p align="center">
-<img src="https://github.com/user-attachments/assets/cd5b869b-26ec-4d18-aa3c-554c78ec7306" alt="Screenshot" />
-</p>
-
-[PrettyOTA](https://github.com/LostInCompilation/PrettyOTA.git)
+![til](https://raw.githubusercontent.com/Whauu/EspressiScale/main/IMG_1073.GIF)
 
 ## Usage
 **Touch controls:**

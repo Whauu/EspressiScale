@@ -1,4 +1,4 @@
-#include <HX711.h>
+/*#include <HX711.h>
 #include <Arduino.h>
 #include <EEPROM.h>
 
@@ -72,4 +72,4 @@ void tareScale(){
 }
 float updateScale(){
   return scale.get_units();
-}
+}*/

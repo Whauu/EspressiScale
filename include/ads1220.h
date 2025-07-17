@@ -1,2 +1,4 @@
-void setup_ads();
-float get_weight();
+void setupScale();
+float updateScale();
+void enableInterruptPin();
+void IRAM_ATTR tareInterruptHandler();

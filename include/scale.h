@@ -1,4 +1,4 @@
-void setupScale();
+/*void setupScale();
 void tareScale();
 float updateScale();
-void setupCalibrationFactor();
+void setupCalibrationFactor();*/

@@ -1,20 +1,25 @@
 #include "arduino.h"
-#include <battery.h>
-#include <scale.h>
+//>#include <battery.h>
+//#include <scale.h>
 #include <filter.h>
 #include "jd9613.h"
 #include "lvgl.h"
 #include "pin_config.h"
 #include "SPI.h"
 #include "time.h"
-#include "sntp.h"
+#include "esp_sntp.h"
 #define TOUCH_MODULES_CST_SELF
 #include "TouchLib.h"
 #include "Wire.h"
 #include "wifiManager.h"
-#include <PrettyOTA.h>
 #include <ESPmDNS.h>
-#include "ads1220.h"
+#include <WebServer.h>
+#include <HTTPUpdateServer.h>
+#include <LittleFS.h>
+#include <HTTPClient.h>
+#include <HTTPUpdate.h>
+#include <ads1220.h>
+#include <BLE.h>
 
 #ifndef BOARD_HAS_PSRAM
 #error "Please turn on PSRAM option to OPI PSRAM"
@@ -23,10 +28,15 @@
 WiFiManager wifiManager;
 String header;
 
-AsyncWebServer  server(80); // Server on port 80 (HTTP)
-PrettyOTA       OTAUpdates;
+const char* versionURL  = "https://raw.githubusercontent.com/Whauu/EspressiScale_web/main/webflash/version.txt";
+const char* host = "raw.githubusercontent.com";
+const uint16_t port = 443;
+const char* uri  = "/Whauu/EspressiScale_web/main/webflash/firmware.bin";
 
-const char* DNS_ADDRESS = "EspressiScale";
+#define DNS_ADDRESS "espressiscale"
+#define FW_VERSION "1.2.0"
+WebServer server(80);
+HTTPUpdateServer httpUpdater;
 
 static const uint16_t screenWidth = 294 * 2; // screenWidth = 294 * 2;
 static const uint16_t screenHeight = 126;
@@ -35,6 +45,11 @@ static lv_disp_draw_buf_t draw_buf;
 static lv_color_t *buf = NULL;
 lv_obj_t *label_weight = NULL;
 lv_obj_t *label_timer = NULL; // New label for timer
+
+static int timer = 0; // Initialize timer to 0
+static bool timer_running = false; // Timer running state
+static unsigned long last_update = 0; // Last update time
+float currentWeight = 0.0; // Current weight
 
 
 static EventGroupHandle_t touch_eg;
@@ -101,6 +116,7 @@ static void deep_sleep()
     gpio_set_level(pin, 0);
     gpio_hold_en(pin);
   }
+  esp_sleep_enable_ext0_wakeup(GPIO_NUM_1, 0); // Touch interrupt is connected to GPIO 12
   esp_wifi_stop();
   esp_deep_sleep_start();
 }
@@ -133,42 +149,231 @@ static void lv_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data
   }
 }
 
+// Helper function to calculate XOR checksum for outgoing data
+uint8_t calculateXOR(uint8_t *data, size_t len) {
+  uint8_t xorValue = 0x03; // Starting value for XOR as per your protocol
+  for (size_t i = 1; i < len - 1; i++) { // Start at index 1; reserve last byte for checksum
+    xorValue ^= data[i];
+  }
+  return xorValue;
+}
+
+// Helper function to encode weight into two bytes
+void encodeWeight(float weight, byte &byte1, byte &byte2) {
+  int weightInt = (int)(weight * 10);  // Convert to an integer (weight in grams * 10)
+  byte1 = (byte)((weightInt >> 8) & 0xFF);
+  byte2 = (byte)(weightInt & 0xFF);
+}
+
+// BLE Server Callbacks
+class MyServerCallbacks : public BLEServerCallbacks {
+  void onConnect(BLEServer *pServer) {
+    deviceConnected = true;
+    Serial.println("Device connected.");
+  }
+
+  void onDisconnect(BLEServer *pServer) {
+    deviceConnected = false;
+    Serial.println("Device disconnected.");
+    // Restart advertising so that new clients can connect.
+    pServer->getAdvertising()->start();
+  }
+};
+
+// BLE Characteristic Callbacks for handling write requests
+class MyCallbacks : public BLECharacteristicCallbacks {
+  uint8_t calculateChecksum(uint8_t *data, size_t len) {
+    uint8_t xorSum = 0;
+    for (size_t i = 0; i < len - 1; i++) {
+      xorSum ^= data[i];
+    }
+    return xorSum;
+  }
+
+  // Validate the checksum of the received data
+  bool validateChecksum(uint8_t *data, size_t len) {
+    if (len < 2) return false;  // At least one data byte and one checksum byte are required
+    uint8_t expectedChecksum = data[len - 1];
+    uint8_t calculatedChecksum = calculateChecksum(data, len);
+    return expectedChecksum == calculatedChecksum;
+  }
+
+  void onWrite(BLECharacteristic *pWriteCharacteristic) {
+    if (pWriteCharacteristic != nullptr) {
+      size_t len = pWriteCharacteristic->getLength();
+      uint8_t *data = (uint8_t *)pWriteCharacteristic->getData();
+
+      // Debug: Print received data in HEX format
+      Serial.print("Received HEX: ");
+      for (size_t i = 0; i < len; i++) {
+        if (data[i] < 0x10) {
+          Serial.print("0");
+        }
+        Serial.print(data[i], HEX);
+        Serial.print(" ");
+      }
+      Serial.println();
+
+      // Process command if the first byte is 0x03
+      if (data[0] == 0x03) {
+        // Tare command: second byte 0x0F
+        if (data[1] == 0x0F) {
+          if (validateChecksum(data, len)) {
+            Serial.println("Valid checksum for tare operation.");
+          } else {
+            Serial.println("Invalid checksum for tare operation.");
+          }
+          tareInterruptHandler();  // Call the external tare function
+        }
+        // LED commands: second byte 0x0A (only LED on/off are processed)
+        else if (data[1] == 0x0A) {
+          if (data[2] == 0x00) {
+            Serial.println("LED off detected.");
+          } else if (data[2] == 0x01) {
+            Serial.println("LED on detected.");
+          }
+          // Power down branch removed.
+        }
+        // Timer commands: second byte 0x0B
+        else if (data[1] == 0x0B) {
+          if (data[2] == 0x03) {
+            Serial.println("Timer start detected.");
+            timer_running = true;
+          } else if (data[2] == 0x00) {
+            Serial.println("Timer stop detected.");
+            timer_running = false;
+          } else if (data[2] == 0x02) {
+            Serial.println("Timer reset detected.");
+            timer = 0;
+          }
+        }
+      }
+    }
+  }
+};
+
+// Function to send weight via BLE notification
+void sendBleWeight() {
+  if (deviceConnected) {
+    unsigned long currentMillis = millis();
+    if (currentMillis - lastWeightNotifyTime >= weightNotifyInterval) {
+      lastWeightNotifyTime = currentMillis;
+      byte data[7];
+      float weight = currentWeight;
+      byte weightByte1, weightByte2;
+      encodeWeight(weight, weightByte1, weightByte2);
+      
+      data[0] = modelByte;
+      data[1] = 0xCE;  // Type byte for weight stable
+      data[2] = weightByte1;
+      data[3] = weightByte2;
+      data[4] = 0x00;
+      data[5] = 0x00;
+      data[6] = calculateXOR(data, 6);  // Calculate checksum
+      
+      pReadCharacteristic->setValue(data, 7);
+      pReadCharacteristic->notify();
+      Serial.print("Notified weight: ");
+      Serial.println(weight);
+    }
+  }
+}
+
+void setupBLE(void * parameter) {
+  BLEDevice::init("EspressiScale"); // Initialize BLE with device name
+  pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new MyServerCallbacks());
+
+  // Create BLE Service
+  BLEService *pService = pServer->createService(SUUID_DECENTSCALE);
+
+  // Create BLE Write Characteristic
+  pWriteCharacteristic = pService->createCharacteristic(
+      CUUID_DECENTSCALE_WRITE,
+      BLECharacteristic::PROPERTY_WRITE);
+  pWriteCharacteristic->setCallbacks(new MyCallbacks());
+
+  // Create BLE Read/Notify Characteristic
+  pReadCharacteristic = pService->createCharacteristic(
+      CUUID_DECENTSCALE_READ,
+      BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+  pReadCharacteristic->addDescriptor(new BLE2902());
+
+  // Start the service
+  pService->start();
+
+  // Start advertising
+  pServer->getAdvertising()->start();
+  Serial.println("BLE advertising started");
+  vTaskDelete(NULL); // Delete this task after setup
+}
+
+
 void startWifi(void * parameter){
   wifiManager.setConnectRetries(10);
   wifiManager.autoConnect("EspressiScale");
-
-  // Wait for WiFi to be connected before proceeding
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(100);
-  }
-
   MDNS.begin(DNS_ADDRESS);
+  LittleFS.begin();
 
-  Serial.println("PrettyOTA can be accessed at: http://" + String(DNS_ADDRESS) + ".local/update");
-  Serial.println("And at: http://" + WiFi.localIP().toString() + "/update");
+  // serve static UI
+  server.on("/", HTTP_GET, []() {
+    auto f = LittleFS.open("/index.html", "r");
+    server.streamFile(f, "text/html");
+    f.close();
+  });
 
-  OTAUpdates.Begin(&server);
-  OTAUpdates.SetAppVersion("1.1.0");
-  OTAUpdates.SetHardwareID("EspressiScale DIY");
-  OTAUpdates.SetSerialOutputStream(&Serial);
-  OTAUpdates.SetAppBuildTimeAndDate(__TIME__, __DATE__);
+  // client-side check: return the GitHub version string
+  server.on("/checkRemote", HTTP_GET, []() {
+    HTTPClient http;
+    http.begin(versionURL);
+    http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+    int code = http.GET();
+    if (code == HTTP_CODE_OK) {
+      String latest = http.getString();
+      latest.trim();
+      server.send(200, "text/plain", latest);
+    } else {
+      server.send(502, "text/plain", "error");
+    }
+    http.end();
+  });
+  
+  // trigger the ESP32 to download & flash the new firmware
+  server.on("/updateRemote", HTTP_GET, []() {
+    WiFiClientSecure client;
+    client.setInsecure(); // Disable SSL certificate verification for simplicity
+    t_httpUpdate_return ret = httpUpdate.update(client, host, port, uri, FW_VERSION);
+    switch (ret) {
+      case HTTP_UPDATE_OK:
+        // never reached; device reboots
+        break;
+      case HTTP_UPDATE_FAILED:
+        server.send(500, "text/plain", "Update failed: " + String(httpUpdate.getLastError()));
+        break;
+      case HTTP_UPDATE_NO_UPDATES:
+        server.send(204, "text/plain", "No update available");
+        break;
+    }
+  });
+
   server.begin();
 
-  vTaskDelete(NULL);
+vTaskDelete(NULL);
 }
 
 void setup()
 {
+  
   for (auto pin : holdPins) {
     gpio_hold_dis(pin);
   }
-  setup_ads(); // Initialize the ADS1220 ADC
+  //setupCalibrationFactor();
   touch_eg = xEventGroupCreate();
-
-  esp_sleep_enable_ext0_wakeup(GPIO_NUM_12, 0); // Touch interrupt is connected to GPIO 12
-
+  pinMode(38, OUTPUT);
+  digitalWrite(38, HIGH);
+  
   Serial.begin(921600);
-  Serial.println("HX711 with median filter and exponential smoothing");
+  //Serial.println("HX711 with median filter and exponential smoothing");
   jd9613_init();
   TFT_CS_0_L;
   lcd_PushColors(0, 0, 294, 126, (uint16_t *)espressiscale_right_map, 1);
@@ -208,7 +413,7 @@ void setup()
   lv_indev_drv_register(&indev_drv);
 
   setupScale();
-  setupBattery();
+  //setupBattery();
 
   // Clear the display after showing the logo
   lv_obj_clean(lv_scr_act());
@@ -235,13 +440,25 @@ void setup()
     NULL, // Task handle
     0 // Task core
   );
+
+  xTaskCreatePinnedToCore(
+    setupBLE, // Function to run on this task
+    "setupBLE", // Task name
+    10000, // Stack size
+    NULL, // Task parameter
+    1, // Task priority
+    NULL, // Task handle
+    0 // Task core
+  );
 }
 
 void loop()
 {
-// Read filtered weight
-  float currentWeight = get_weight();
-  Serial.printf("Current weight: %.2f g\n", currentWeight);
+  server.handleClient();
+  // Read filtered weight
+  currentWeight = medianFilter();
+  sendBleWeight();
+
   // Update the label with the current weight
   char weight_str[16];
   snprintf(weight_str, sizeof(weight_str), "%.1f g", currentWeight);
@@ -252,6 +469,7 @@ void loop()
   static bool timer_running = false; // Timer running state
   static unsigned long last_update = 0; // Last update time
 
+/*
   if (touch.read())
   {
     TP_Point t = touch.getPoint(0);
@@ -279,7 +497,9 @@ void loop()
       );
       Serial.println("Tared and timer reset via touch");
     }
-  }
+  }*/
+
+  enableInterruptPin(); // Ensure the interrupt pin is enabled
 
   if (timer_running)
   {
@@ -302,6 +522,17 @@ void loop()
   static unsigned long last_activity_time = 0; // Last activity time
   static float lastWeight = currentWeight; // Last weight value
 
+  if (digitalRead(GPIO_NUM_1) == LOW) {
+    Serial.println("Button pressed, preparing to enter deep sleep...");
+    // Wait until button is released
+    while (digitalRead(GPIO_NUM_1) == LOW) {
+      delay(100);
+    }
+    delay(100); // Debounce delay
+    Serial.println("Button released, entering deep sleep...");
+    deep_sleep();
+  }
+
   // Check if the timer is not running and weight hasn't changed significantly
   if (!timer_running && abs(currentWeight - lastWeight) < 1.0)
   {
@@ -320,7 +551,7 @@ void loop()
 
   lastWeight = currentWeight; // Update the last weight value
 
-  float batteryStatus = getBatteryVoltage(); // Update the battery status
+  /*float batteryStatus = getBatteryVoltage(); // Update the battery status
   
   if (batteryStatus < 2.8) // Check if battery voltage is below 3V
   {
@@ -329,5 +560,5 @@ void loop()
     lv_label_set_text(label_weight, "Low battery");
     delay(2000); // Wait for 2 seconds to show the message
     deep_sleep();
-  }
+  }*/
 }

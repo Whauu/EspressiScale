@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EspressiScale OTA</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      margin: 0; padding: 0;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh;
+      background-color: #f2f2f5;
+      color: #1c1c1e;
+    }
+    .card {
+      background-color: #fff;
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+      padding: 2rem;
+      text-align: center;
+      max-width: 400px; width: 90%;
+    }
+    h1 {
+      font-size: 1.75rem; margin-bottom: 1.5rem; font-weight: 600;
+    }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 0.75rem 1.5rem; font-size: 1rem; font-weight: 500;
+      color: #fff; background-color: #007aff;
+      border: none; border-radius: 24px;
+      box-shadow: 0 4px 12px rgba(0,122,255,0.3);
+      cursor: pointer; transition: background-color .2s, box-shadow .2s;
+      margin: 0.5rem;
+    }
+    .btn:hover {
+      background-color: #005bb5;
+      box-shadow: 0 6px 16px rgba(0,91,181,0.3);
+    }
+    .btn:disabled {
+      background-color: #b0b0b5;
+      box-shadow: none;
+      cursor: default;
+    }
+    .note {
+      font-size: 0.875rem; color: #6e6e73; margin-top: 1rem;
+    }
+    .error {
+      font-size: 1rem; color: #ff3b30;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>EspressiScale OTA</h1>
+    <button id="checkBtn" class="btn">Check for update</button>
+    <button id="forceBtn" class="btn">Force update</button>
+    <div id="updateSection" style="display:none; margin-top:1rem;">
+      <p>New version available: <strong id="newVersion"></strong></p>
+      <button id="updateBtn" class="btn">Update now</button>
+    </div>
+    <div id="message" class="note"></div>
+  </div>
+
+  <script>
+    const checkBtn    = document.getElementById('checkBtn');
+    const forceBtn    = document.getElementById('forceBtn');
+    const updateBtn   = document.getElementById('updateBtn');
+    const updateSect  = document.getElementById('updateSection');
+    const newVerEl    = document.getElementById('newVersion');
+    const messageEl   = document.getElementById('message');
+
+    const FW_VERSION = "1.2.0"; 
+
+    function resetUI() {
+      messageEl.textContent = '';
+      messageEl.classList.remove('error');
+      updateSect.style.display = 'none';
+      updateBtn.disabled = false;
+      updateBtn.textContent = 'Update now';
+    }
+
+    async function performUpdate() {
+      messageEl.textContent = '';
+      messageEl.classList.remove('error');
+      updateBtn.disabled = true;
+      updateBtn.textContent = 'Updating…';
+      try {
+        const res = await fetch('/updateRemote');
+        if (res.ok) {
+          messageEl.textContent = 'Update succeeded; device is rebooting…';
+        } else {
+          const err = await res.text();
+          throw new Error(err);
+        }
+      } catch (err) {
+        messageEl.textContent = 'Update failed: ' + err.message;
+        messageEl.classList.add('error');
+        updateBtn.disabled = false;
+        updateBtn.textContent = 'Update now';
+      }
+    }
+
+    checkBtn.addEventListener('click', async () => {
+      resetUI();
+      checkBtn.disabled = true;
+      checkBtn.textContent = 'Checking…';
+      try {
+        const res = await fetch('/checkRemote');
+        if (!res.ok) throw new Error(res.statusText);
+        const latestRaw = await res.text();
+        const latest = latestRaw.trim();
+        if (latest === FW_VERSION) {
+          messageEl.textContent = 'Already on the latest firmware.';
+        } else {
+          newVerEl.textContent = latest;
+          updateSect.style.display = 'block';
+        }
+      } catch (err) {
+        messageEl.textContent = 'Error checking update: ' + err.message;
+        messageEl.classList.add('error');
+      } finally {
+        checkBtn.disabled = false;
+        checkBtn.textContent = 'Check for update';
+      }
+    });
+
+    forceBtn.addEventListener('click', () => {
+      resetUI();
+      if (confirm('Force download & flash latest firmware?')) {
+        newVerEl.textContent = 'latest';
+        updateSect.style.display = 'block';
+        performUpdate();
+      }
+    });
+
+    updateBtn.addEventListener('click', () => {
+      if (!confirm('Download & flash version ' + newVerEl.textContent + '?')) return;
+      performUpdate();
+    });
+  </script>
+</body>
+</html>
