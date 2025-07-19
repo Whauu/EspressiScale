@@ -7,7 +7,7 @@
 #include "pin_config.h"
 #include "SPI.h"
 #include "time.h"
-#include "sntp.h"
+#include "esp_sntp.h"
 #define TOUCH_MODULES_CST_SELF
 #include "TouchLib.h"
 #include "Wire.h"
@@ -18,6 +18,7 @@
 #include <LittleFS.h>
 #include <HTTPClient.h>
 #include <HTTPUpdate.h>
+#include <BLE.h>
 
 #ifndef BOARD_HAS_PSRAM
 #error "Please turn on PSRAM option to OPI PSRAM"
@@ -32,7 +33,7 @@ const uint16_t port = 443;
 const char* uri  = "/Whauu/EspressiScale_web/main/webflash/firmware.bin";
 
 #define DNS_ADDRESS "espressiscale"
-#define FW_VERSION "1.2.0"
+#define FW_VERSION "1.3.0"
 WebServer server(80);
 HTTPUpdateServer httpUpdater;
 
@@ -44,6 +45,10 @@ static lv_color_t *buf = NULL;
 lv_obj_t *label_weight = NULL;
 lv_obj_t *label_timer = NULL; // New label for timer
 
+static int timer = 0; // Initialize timer to 0
+static bool timer_running = false; // Timer running state
+static unsigned long last_update = 0; // Last update time
+float currentWeight = 0.0; // Current weight
 
 static EventGroupHandle_t touch_eg;
 #define GET_TOUCH_INT _BV(1)
@@ -139,6 +144,165 @@ static void lv_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data
   {
     data->state = LV_INDEV_STATE_REL;
   }
+}
+
+// Helper function to calculate XOR checksum for outgoing data
+uint8_t calculateXOR(uint8_t *data, size_t len) {
+  uint8_t xorValue = 0x03; // Starting value for XOR as per your protocol
+  for (size_t i = 1; i < len - 1; i++) { // Start at index 1; reserve last byte for checksum
+    xorValue ^= data[i];
+  }
+  return xorValue;
+}
+
+// Helper function to encode weight into two bytes
+void encodeWeight(float weight, byte &byte1, byte &byte2) {
+  int weightInt = (int)(weight * 10);  // Convert to an integer (weight in grams * 10)
+  byte1 = (byte)((weightInt >> 8) & 0xFF);
+  byte2 = (byte)(weightInt & 0xFF);
+}
+
+// BLE Server Callbacks
+class MyServerCallbacks : public BLEServerCallbacks {
+  void onConnect(BLEServer *pServer) {
+    deviceConnected = true;
+    Serial.println("Device connected.");
+  }
+
+  void onDisconnect(BLEServer *pServer) {
+    deviceConnected = false;
+    Serial.println("Device disconnected.");
+    // Restart advertising so that new clients can connect.
+    pServer->getAdvertising()->start();
+  }
+};
+
+// BLE Characteristic Callbacks for handling write requests
+class MyCallbacks : public BLECharacteristicCallbacks {
+  uint8_t calculateChecksum(uint8_t *data, size_t len) {
+    uint8_t xorSum = 0;
+    for (size_t i = 0; i < len - 1; i++) {
+      xorSum ^= data[i];
+    }
+    return xorSum;
+  }
+
+  // Validate the checksum of the received data
+  bool validateChecksum(uint8_t *data, size_t len) {
+    if (len < 2) return false;  // At least one data byte and one checksum byte are required
+    uint8_t expectedChecksum = data[len - 1];
+    uint8_t calculatedChecksum = calculateChecksum(data, len);
+    return expectedChecksum == calculatedChecksum;
+  }
+
+  void onWrite(BLECharacteristic *pWriteCharacteristic) {
+    if (pWriteCharacteristic != nullptr) {
+      size_t len = pWriteCharacteristic->getLength();
+      uint8_t *data = (uint8_t *)pWriteCharacteristic->getData();
+
+      // Debug: Print received data in HEX format
+      Serial.print("Received HEX: ");
+      for (size_t i = 0; i < len; i++) {
+        if (data[i] < 0x10) {
+          Serial.print("0");
+        }
+        Serial.print(data[i], HEX);
+        Serial.print(" ");
+      }
+      Serial.println();
+
+      // Process command if the first byte is 0x03
+      if (data[0] == 0x03) {
+        // Tare command: second byte 0x0F
+        if (data[1] == 0x0F) {
+          if (validateChecksum(data, len)) {
+            Serial.println("Valid checksum for tare operation.");
+          } else {
+            Serial.println("Invalid checksum for tare operation.");
+          }
+          tareScale();  // Call the external tare function
+        }
+        // LED commands: second byte 0x0A (only LED on/off are processed)
+        else if (data[1] == 0x0A) {
+          if (data[2] == 0x00) {
+            Serial.println("LED off detected.");
+          } else if (data[2] == 0x01) {
+            Serial.println("LED on detected.");
+          }
+          // Power down branch removed.
+        }
+        // Timer commands: second byte 0x0B
+        else if (data[1] == 0x0B) {
+          if (data[2] == 0x03) {
+            Serial.println("Timer start detected.");
+            timer_running = true;
+          } else if (data[2] == 0x00) {
+            Serial.println("Timer stop detected.");
+            timer_running = false;
+          } else if (data[2] == 0x02) {
+            Serial.println("Timer reset detected.");
+            timer = 0;
+          }
+        }
+      }
+    }
+  }
+};
+
+// Function to send weight via BLE notification
+void sendBleWeight() {
+  if (deviceConnected) {
+    unsigned long currentMillis = millis();
+    if (currentMillis - lastWeightNotifyTime >= weightNotifyInterval) {
+      lastWeightNotifyTime = currentMillis;
+      byte data[7];
+      float weight = currentWeight;
+      byte weightByte1, weightByte2;
+      encodeWeight(weight, weightByte1, weightByte2);
+      
+      data[0] = modelByte;
+      data[1] = 0xCE;  // Type byte for weight stable
+      data[2] = weightByte1;
+      data[3] = weightByte2;
+      data[4] = 0x00;
+      data[5] = 0x00;
+      data[6] = calculateXOR(data, 6);  // Calculate checksum
+      
+      pReadCharacteristic->setValue(data, 7);
+      pReadCharacteristic->notify();
+      Serial.print("Notified weight: ");
+      Serial.println(weight);
+    }
+  }
+}
+
+void setupBLE(void * parameter) {
+  BLEDevice::init("EspressiScale"); // Initialize BLE with device name
+  pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new MyServerCallbacks());
+
+  // Create BLE Service
+  BLEService *pService = pServer->createService(SUUID_DECENTSCALE);
+
+  // Create BLE Write Characteristic
+  pWriteCharacteristic = pService->createCharacteristic(
+      CUUID_DECENTSCALE_WRITE,
+      BLECharacteristic::PROPERTY_WRITE);
+  pWriteCharacteristic->setCallbacks(new MyCallbacks());
+
+  // Create BLE Read/Notify Characteristic
+  pReadCharacteristic = pService->createCharacteristic(
+      CUUID_DECENTSCALE_READ,
+      BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+  pReadCharacteristic->addDescriptor(new BLE2902());
+
+  // Start the service
+  pService->start();
+
+  // Start advertising
+  pServer->getAdvertising()->start();
+  Serial.println("BLE advertising started");
+  vTaskDelete(NULL); // Delete this task after setup
 }
 
 void startWifi(void * parameter){
@@ -271,23 +435,29 @@ void setup()
     NULL, // Task handle
     0 // Task core
   );
+
+  xTaskCreatePinnedToCore(
+    setupBLE, // Function to run on this task
+    "setupBLE", // Task name
+    10000, // Stack size
+    NULL, // Task parameter
+    1, // Task priority
+    NULL, // Task handle
+    0 // Task core
+  );
 }
 
 void loop()
 {
   server.handleClient();
   // Read filtered weight
-  float currentWeight = medianFilter();
+  currentWeight = medianFilter();
+  sendBleWeight(); // Send weight via BLE notification
 
   // Update the label with the current weight
   char weight_str[16];
   snprintf(weight_str, sizeof(weight_str), "%.1f g", currentWeight);
   lv_label_set_text(label_weight, weight_str);
-
-  // Placeholder timer value
-  static int timer = 0; // Initialize timer to 0
-  static bool timer_running = false; // Timer running state
-  static unsigned long last_update = 0; // Last update time
 
   if (touch.read())
   {
