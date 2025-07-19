@@ -48,11 +48,19 @@
     .error {
       font-size: 1rem; color: #ff3b30;
     }
+    select {
+      margin-top: 0.5rem;
+      padding: 0.5rem;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
   </style>
 </head>
 <body>
   <div class="card">
     <h1>EspressiScale OTA</h1>
+    <p class="note" id="versionText">Version: Loading...</p>
     <button id="checkBtn" class="btn">Check for update</button>
     <button id="forceBtn" class="btn">Force update</button>
     <div id="updateSection" style="display:none; margin-top:1rem;">
@@ -60,17 +68,51 @@
       <button id="updateBtn" class="btn">Update now</button>
     </div>
     <div id="message" class="note"></div>
+    <!-- Dropdown for release channel placed at bottom -->
+    <label for="channelSelect" class="note" style="margin-top:1.5rem;">Channel:</label>
+    <select id="channelSelect">
+      <option value="stable">Stable</option>
+      <option value="beta">Beta</option>
+    </select>
   </div>
 
   <script>
-    const checkBtn    = document.getElementById('checkBtn');
-    const forceBtn    = document.getElementById('forceBtn');
-    const updateBtn   = document.getElementById('updateBtn');
-    const updateSect  = document.getElementById('updateSection');
-    const newVerEl    = document.getElementById('newVersion');
-    const messageEl   = document.getElementById('message');
+    function compareVersions(v1, v2) {
+      const a = v1.split('.').map(n => parseInt(n, 10));
+      const b = v2.split('.').map(n => parseInt(n, 10));
+      const len = Math.max(a.length, b.length);
+      for (let i = 0; i < len; i++) {
+        const n1 = a[i] || 0;
+        const n2 = b[i] || 0;
+        if (n1 > n2) return 1;
+        if (n1 < n2) return -1;
+      }
+      return 0;
+    }
 
-    const FW_VERSION = "1.3.1"; 
+    // Load firmware version and store globally
+    fetch('/getFW')
+      .then(r => r.text())
+      .then(v => {
+        window.FW_VERSION = v.trim();
+        document.getElementById('versionText').textContent = 'Version: ' + window.FW_VERSION;
+      })
+      .catch(() => {
+        window.FW_VERSION = null;
+        document.getElementById('versionText').textContent = 'Error loading version';
+      });
+
+    const channelSelect = document.getElementById('channelSelect');
+    const checkBtn      = document.getElementById('checkBtn');
+    const forceBtn      = document.getElementById('forceBtn');
+    const updateBtn     = document.getElementById('updateBtn');
+    const updateSect    = document.getElementById('updateSection');
+    const newVerEl      = document.getElementById('newVersion');
+    const messageEl     = document.getElementById('message');
+
+    function getSuffix() {
+      return channelSelect.value === 'beta' ? 'Beta' : '';
+    }
 
     function resetUI() {
       messageEl.textContent = '';
@@ -81,17 +123,16 @@
     }
 
     async function performUpdate() {
-      messageEl.textContent = '';
-      messageEl.classList.remove('error');
+      resetUI();
       updateBtn.disabled = true;
       updateBtn.textContent = 'Updating…';
+      const suffix = getSuffix();
       try {
-        const res = await fetch('/updateRemote');
+        const res = await fetch(`/updateRemote${suffix}`);
         if (res.ok) {
           messageEl.textContent = 'Update succeeded; device is rebooting…';
         } else {
-          const err = await res.text();
-          throw new Error(err);
+          throw new Error(await res.text());
         }
       } catch (err) {
         messageEl.textContent = 'Update failed: ' + err.message;
@@ -105,12 +146,13 @@
       resetUI();
       checkBtn.disabled = true;
       checkBtn.textContent = 'Checking…';
+      const suffix = getSuffix();
       try {
-        const res = await fetch('/checkRemote');
+        const res = await fetch(`/checkRemote${suffix}`);
         if (!res.ok) throw new Error(res.statusText);
-        const latestRaw = await res.text();
-        const latest = latestRaw.trim();
-        if (latest === FW_VERSION) {
+        const latest = (await res.text()).trim();
+        const cmp = window.FW_VERSION ? compareVersions(latest, window.FW_VERSION) : 1;
+        if (cmp <= 0) {
           messageEl.textContent = 'Already on the latest firmware.';
         } else {
           newVerEl.textContent = latest;
@@ -135,8 +177,9 @@
     });
 
     updateBtn.addEventListener('click', () => {
-      if (!confirm('Download & flash version ' + newVerEl.textContent + '?')) return;
-      performUpdate();
+      if (confirm('Download & flash version ' + newVerEl.textContent + '?')) {
+        performUpdate();
+      }
     });
   </script>
 </body>
