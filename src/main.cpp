@@ -34,7 +34,7 @@ const uint16_t port = 443;
 const char* uri  = "/Whauu/EspressiScale_web/main/webflash/firmware.bin";
 
 #define DNS_ADDRESS "espressiscale"
-#define FW_VERSION "1.3.0"
+#define FW_VERSION "1.3.1"
 WebServer server(80);
 HTTPUpdateServer httpUpdater;
 
