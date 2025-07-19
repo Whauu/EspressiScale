@@ -27,13 +27,14 @@
 WiFiManager wifiManager;
 String header;
 
+const char* fs_URL = "https://raw.githubusercontent.com/Whauu/EspressiScale_web/main/webflash/littlefs.bin";
 const char* versionURL  = "https://raw.githubusercontent.com/Whauu/EspressiScale_web/main/webflash/version.txt";
 const char* host = "raw.githubusercontent.com";
 const uint16_t port = 443;
 const char* uri  = "/Whauu/EspressiScale_web/main/webflash/firmware.bin";
 
 #define DNS_ADDRESS "espressiscale"
-#define FW_VERSION "1.3.0"
+#define FW_VERSION "1.2.0"
 WebServer server(80);
 HTTPUpdateServer httpUpdater;
 
@@ -336,6 +337,32 @@ void startWifi(void * parameter){
   
   // trigger the ESP32 to download & flash the new firmware
   server.on("/updateRemote", HTTP_GET, []() {
+  HTTPClient httpFS;
+  httpFS.begin(fs_URL); 
+  if (httpFS.GET() != HTTP_CODE_OK) {
+    server.send(500, "text/plain", "Failed getting filesystem update file");
+    Serial.println("Failed getting LittleFS update file");
+    httpFS.end();
+    return;
+  }
+  int fsLen         = httpFS.getSize();
+  WiFiClient* stream = httpFS.getStreamPtr();
+
+  if (!Update.begin(fsLen, U_SPIFFS)) {
+    server.send(500, "text/plain", "Failed starting FS update");
+    Serial.println("Failed starting LittleFS update");
+    httpFS.end();
+    return;
+  }
+  size_t written = Update.writeStream(*stream);
+  if (written != (size_t)fsLen || !Update.end(true)) {
+    server.send(500, "text/plain", "Failed updating FS");
+    Serial.println("Failed updating LittleFS");
+    httpFS.end();
+    return;
+  }
+  httpFS.end();
+  Serial.println("LittleFS updated successfully");
     WiFiClientSecure client;
     client.setInsecure(); // Disable SSL certificate verification for simplicity
     t_httpUpdate_return ret = httpUpdate.update(client, host, port, uri, FW_VERSION);
@@ -345,12 +372,14 @@ void startWifi(void * parameter){
         break;
       case HTTP_UPDATE_FAILED:
         server.send(500, "text/plain", "Update failed: " + String(httpUpdate.getLastError()));
+        Serial.println("Failed updating firmware");
         break;
       case HTTP_UPDATE_NO_UPDATES:
         server.send(204, "text/plain", "No update available");
         break;
     }
-  });
+  }
+);
 
   server.begin();
 
