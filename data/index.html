@@ -61,6 +61,7 @@
   <div class="card">
     <h1>EspressiScale OTA</h1>
     <p class="note" id="versionText">Version: Loading...</p>
+    <!-- Buttons -->
     <button id="checkBtn" class="btn">Check for update</button>
     <button id="forceBtn" class="btn">Force update</button>
     <div id="updateSection" style="display:none; margin-top:1rem;">
@@ -68,7 +69,7 @@
       <button id="updateBtn" class="btn">Update now</button>
     </div>
     <div id="message" class="note"></div>
-    <!-- Dropdown for release channel placed at bottom -->
+    <!-- Dropdown menu for release channel -->
     <label for="channelSelect" class="note" style="margin-top:1.5rem;">Channel:</label>
     <select id="channelSelect">
       <option value="stable">Stable</option>
@@ -77,6 +78,7 @@
   </div>
 
   <script>
+    // Script for comparing version strings
     function compareVersions(v1, v2) {
       const a = v1.split('.').map(n => parseInt(n, 10));
       const b = v2.split('.').map(n => parseInt(n, 10));
@@ -169,7 +171,8 @@
 
     forceBtn.addEventListener('click', () => {
       resetUI();
-      if (confirm('Force download & flash latest firmware?')) {
+      if (confirm('Please stay on this page during the update process. \n\n' +
+                  'Force install the latest version?')) {
         newVerEl.textContent = 'latest';
         updateSect.style.display = 'block';
         performUpdate();
@@ -177,7 +180,8 @@
     });
 
     updateBtn.addEventListener('click', () => {
-      if (confirm('Download & flash version ' + newVerEl.textContent + '?')) {
+      if (confirm('Please stay on this page during the update process.\n\n' +
+                  'Update to version ' + newVerEl.textContent + '?')) {
         performUpdate();
       }
     });
