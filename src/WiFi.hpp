@@ -19,6 +19,7 @@ const uint16_t port = 443;
 const char* uri  = "/Whauu/EspressiScale_web/main/webflash/firmware.bin";
 const char* beta_uri  = "/Whauu/EspressiScale_web/main/beta/firmware.bin";
 
+#define pass "Espressi"
 #define DNS_ADDRESS "espressiscale"
 #define FW_VERSION "1.3.3"
 WebServer server(80);
@@ -27,7 +28,7 @@ HTTPUpdateServer httpUpdater;
 
 void startWifi(void * parameter){
   wifiManager.setConnectRetries(10);
-  wifiManager.autoConnect("EspressiScale");
+  wifiManager.autoConnect("EspressiScale", pass);
   MDNS.begin(DNS_ADDRESS);
   LittleFS.begin();
 
