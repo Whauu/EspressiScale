@@ -20,7 +20,7 @@ const char* uri  = "/Whauu/EspressiScale_web/main/webflash/firmware.bin";
 const char* beta_uri  = "/Whauu/EspressiScale_web/main/beta/firmware.bin";
 
 #define DNS_ADDRESS "espressiscale"
-#define FW_VERSION "1.3.2"
+#define FW_VERSION "1.3.3"
 WebServer server(80);
 HTTPUpdateServer httpUpdater;
 

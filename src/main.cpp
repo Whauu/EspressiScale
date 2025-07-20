@@ -397,11 +397,11 @@ void loop()
     {
       timer_running = !timer_running; // Toggle timer state
       delay(1000); // Debounce delay
-    }
-    else if (x < screenWidth / 2 && x > screenWidth / 2)
-    {
-      Serial.println("Touch registered on both sides, entering deep sleep...");
-      deep_sleep(); // Enter deep sleep if both sides are touched
+      if (x > screenWidth / 2)
+      {
+        Serial.println("double press detected, entering deep sleep");
+        deep_sleep(); // Enter deep sleep on double press
+      }
     }
     else
     {
