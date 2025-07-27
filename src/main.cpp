@@ -396,6 +396,7 @@ void loop()
     if (x > screenWidth / 2)
     {
       timer_running = !timer_running; // Toggle timer state
+      x = 0;
       delay(1000); // Debounce delay
       if (x > screenWidth / 2)
       {
