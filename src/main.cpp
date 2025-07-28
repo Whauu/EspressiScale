@@ -201,7 +201,17 @@ class MyCallbacks : public BLECharacteristicCallbacks {
           } else {
             Serial.println("Invalid checksum for tare operation.");
           }
-          tareScale();  // Call the external tare function
+          xTaskCreate( // To prevent halting the loop
+          [] (void * parameter) {
+          tareScale(); // Tare the scale
+          vTaskDelete(NULL); // Delete the task once done
+          },
+          "TareTask", // Task name
+          10000, // Stack size
+          NULL, // Task parameter
+          1, // Task priority
+          NULL // Task handle
+          );
         }
         // LED commands: second byte 0x0A (only LED on/off are processed)
         else if (data[1] == 0x0A) {
