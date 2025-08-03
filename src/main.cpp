@@ -373,7 +373,7 @@ void setup()
   digitalWrite(38, HIGH);
   
   Serial.begin(921600);
-  //Serial.println("HX711 with median filter and exponential smoothing");
+  Serial.println("ADS1220 with filtering");
   jd9613_init();
   TFT_CS_0_L;
   lcd_PushColors(0, 0, 294, 126, (uint16_t *)espressiscale_right_map, 1);
@@ -391,11 +391,11 @@ void setup()
 
   lv_disp_draw_buf_init(&draw_buf, buf, NULL, screenWidth * screenHeight);
 
-  /*Initialize the display*/
+  //Initialize the display
   static lv_disp_drv_t disp_drv;
   lv_disp_drv_init(&disp_drv);
 
-  /*Set the resolution of the display*/
+  //Set the resolution of the display
   disp_drv.hor_res = screenWidth;
   disp_drv.ver_res = screenHeight;
   disp_drv.flush_cb = my_disp_flush;
