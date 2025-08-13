@@ -25,7 +25,7 @@ const float SMOOTHING_FACTOR = 0.05f;
 
 // ---------- Globals ----------
 ads1220::ADS1220 ads;
-SPIClass        spiAds(HSPI);
+SPIClass        spiAds(1);
 volatile bool   drdyIntrFlag = false;
 volatile int    tareCounter   = -1;
 float           weight        = 0;

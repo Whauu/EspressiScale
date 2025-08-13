@@ -4,7 +4,7 @@
 #include "pin_config.h"
 
 uint8_t horizontal = 0;
-
+SPIClass        spiDisp(0);
 extern void my_print(const char *buf);
 
 typedef struct
@@ -106,8 +106,8 @@ typedef struct
 // clang-format on
 static void tft_gpio_init(void)
 {
-    SPI.begin(TFT_SCK, -1, TFT_MOSI, -1);
-    SPI.setFrequency(SPI_FREQUENCY);
+    spiDisp.begin(TFT_SCK, -1, TFT_MOSI, -1);
+    spiDisp.setFrequency(SPI_FREQUENCY);
     pinMode(TFT_DC, OUTPUT);
     pinMode(TFT_CS_0, OUTPUT);
     pinMode(TFT_CS_1, OUTPUT);
@@ -121,27 +121,27 @@ static void tft_gpio_init(void)
 
 static void WriteComm(uint8_t data)
 {
-    SPI.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, TFT_SPI_MODE));
+    spiDisp.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, TFT_SPI_MODE));
     TFT_DC_L;
-    SPI.write(data);
+    spiDisp.write(data);
     TFT_DC_H;
-    SPI.endTransaction();
+    spiDisp.endTransaction();
 }
 
 static void WriteData(uint8_t data)
 {
-    SPI.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, TFT_SPI_MODE));
+    spiDisp.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, TFT_SPI_MODE));
     TFT_DC_H;
-    SPI.write(data);
-    SPI.endTransaction();
+    spiDisp.write(data);
+    spiDisp.endTransaction();
 }
 
 static void WriteData16(uint16_t data)
 {
-    SPI.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, TFT_SPI_MODE));
+    spiDisp.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, TFT_SPI_MODE));
     TFT_DC_H;
-    SPI.write16(data);
-    SPI.endTransaction();
+    spiDisp.write16(data);
+    spiDisp.endTransaction();
 }
 
 void jd9613_init(void)
@@ -212,23 +212,23 @@ void lcd_fill(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color)
 void lcd_PushColors(uint16_t x, uint16_t y, uint16_t width, uint16_t high, uint16_t *data)
 {
     LCD_Address_Set(x, y, x + width - 1, y + high - 1);
-    SPI.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, TFT_SPI_MODE));
+    spiDisp.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, TFT_SPI_MODE));
     TFT_DC_H;
     // SPI.writeBytes((uint8_t *)data, width * high * 2);
     for (int i = 0; i < width * high; i++)
     {
-        SPI.write16(data[i]);
+        spiDisp.write16(data[i]);
     }
 
-    SPI.endTransaction();
+    spiDisp.endTransaction();
 }
 
 void lcd_PushColors(uint16_t *data, uint32_t len)
 {
-    SPI.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, TFT_SPI_MODE));
+    spiDisp.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, TFT_SPI_MODE));
     TFT_DC_H;
-    SPI.writeBytes((uint8_t *)data, len * 2);
-    SPI.endTransaction();
+    spiDisp.writeBytes((uint8_t *)data, len * 2);
+    spiDisp.endTransaction();
 }
 
 void lcd_PushColors_SoftRotation(uint16_t  x,
@@ -253,13 +253,13 @@ void lcd_PushColors_SoftRotation(uint16_t  x,
 
     if(r == 2)
     {
-        SPI.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, TFT_SPI_MODE));
+        spiDisp.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, TFT_SPI_MODE));
         TFT_DC_H;
         for (uint16_t j = 294-x; j < width+294-x; j++)
         {
             for (uint16_t i = 0; i < high; i++)
             {
-                SPI.write16((uint16_t)p[(width+294-x) * (high - i - 1) + j]);
+                spiDisp.write16((uint16_t)p[(width+294-x) * (high - i - 1) + j]);
                 // SPI.write(p[width * (high - i - 1) + j]);
                 // SPI.write(p[width * (high - i - 1) + j]>>8);
             }
@@ -267,7 +267,7 @@ void lcd_PushColors_SoftRotation(uint16_t  x,
     }
     if(r == 1)
     {
-        SPI.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, TFT_SPI_MODE));
+        spiDisp.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, TFT_SPI_MODE));
         TFT_DC_H;
         /*for (uint16_t j = 0; j+x < 294; j++)
         {
@@ -281,12 +281,12 @@ void lcd_PushColors_SoftRotation(uint16_t  x,
         {
             for (uint16_t i = 0; i < high; i++)
             {
-                SPI.write16((uint16_t)p[(126*294*2)-294-((width+294) * (high - i - 1) + j)]);
+                spiDisp.write16((uint16_t)p[(126*294*2)-294-((width+294) * (high - i - 1) + j)]);
             }
         }
     }
 
-    SPI.endTransaction();
+    spiDisp.endTransaction();
 }
 
 /*
@@ -417,7 +417,7 @@ void lcd_PushColors(uint16_t  x,
         //lcd_PushColors(x, y, width, high, data);
         LCD_Address_Set(x, y, x + width - 1, y + high - 1);
 
-        SPI.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, TFT_SPI_MODE));
+        spiDisp.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, TFT_SPI_MODE));
         TFT_DC_H;
        /* for (uint16_t i = 0; i < high; i++)
         {
@@ -438,14 +438,14 @@ void lcd_PushColors(uint16_t  x,
         {
             for (uint16_t j = 0; j < width; j++)
             {
-                 SPI.write16((uint16_t)p[width * (high - i - 1) + j]);
+                 spiDisp.write16((uint16_t)p[width * (high - i - 1) + j]);
                 // SPI.write(p[width * (high - i - 1) + j]);
                 // SPI.write(p[width * (high - i - 1) + j]>>8);
             }
         }
 
 
-        SPI.endTransaction();
+        spiDisp.endTransaction();
     }
     else if (rotation == 1)
     {
@@ -456,30 +456,30 @@ void lcd_PushColors(uint16_t  x,
         uint16_t *p = data;
 
         LCD_Address_Set(_x, _y, _x + _w - 1, _y + _h - 1);
-        SPI.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, TFT_SPI_MODE));
+        spiDisp.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, TFT_SPI_MODE));
         TFT_DC_H;
         for (uint16_t j = 0; j < width; j++)
         {
             for (uint16_t i = 0; i < high; i++)
             {
-                SPI.write16((uint16_t)p[width * (high - i - 1) + j]);
+                spiDisp.write16((uint16_t)p[width * (high - i - 1) + j]);
             }
         }
-        SPI.endTransaction();
+        spiDisp.endTransaction();
     }
     else if (rotation == 2)
     {
         LCD_Address_Set(x, 294 - (y + high - 1), x + width - 1, 294 - y - 1);
 
-        SPI.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, TFT_SPI_MODE));
+        spiDisp.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, TFT_SPI_MODE));
         TFT_DC_H;
 
         for (int i = (width * high); i > 0; i--)
         {
-            SPI.write16(data[i]);
+            spiDisp.write16(data[i]);
         }
 
-        SPI.endTransaction();
+        spiDisp.endTransaction();
     }
     else if (rotation == 3)
     {
@@ -491,15 +491,15 @@ void lcd_PushColors(uint16_t  x,
 
         LCD_Address_Set(_x, _y, _x + _w - 1, _y + _h - 1);
 
-        SPI.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, TFT_SPI_MODE));
+        spiDisp.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, TFT_SPI_MODE));
         TFT_DC_H;
         for (uint16_t j = 0; j < width; j++)
         {
             for (uint16_t i = 0; i < high; i++)
             {
-                SPI.write16((uint16_t)p[width * (i + 1) - j - 1]);
+                spiDisp.write16((uint16_t)p[width * (i + 1) - j - 1]);
             }
         }
-        SPI.endTransaction();
+        spiDisp.endTransaction();
     }
 }
