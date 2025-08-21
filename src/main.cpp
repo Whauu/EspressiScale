@@ -30,6 +30,8 @@ static int timer = 0; // Initialize timer to 0
 static bool timer_running = false; // Timer running state
 static unsigned long last_update = 0; // Last update time
 float currentWeight = 0.0; // Current weight
+static bool prevTouched = false;
+static unsigned long touchStart = 0;
 
 static EventGroupHandle_t touch_eg;
 #define GET_TOUCH_INT _BV(1)
@@ -406,12 +408,7 @@ void loop()
     if (x > screenWidth / 2)
     {
       timer_running = !timer_running; // Toggle timer state
-      delay(1000); // Debounce delay
-      if (x > screenWidth / 2)
-      {
-        Serial.println("double press detected, entering deep sleep");
-        deep_sleep(); // Enter deep sleep on double press
-      }
+      delay(100); // Debounce delay
     }
     else
     {
@@ -440,6 +437,23 @@ void loop()
       timer++;
       last_update = current_time;
     }
+  }
+
+  if (touch.read()) {
+    if (!prevTouched) {
+      touchStart = millis();
+    }
+
+    // If touch is still held and >1000ms
+    if (millis() - touchStart > 1000) {
+      Serial.println("Long press detected, entering deep sleep");
+     deep_sleep();  // esp_deep_sleep_start();
+    }
+
+    prevTouched = true;
+  } 
+  else {
+  prevTouched = false;
   }
 
   // Update the label with the timer value
