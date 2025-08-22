@@ -1,16 +1,16 @@
-#include "arduino.h"
+#include <Arduino.h>
 #include <battery.h>
 #include <scale.h>
 #include <filter.h>
-#include "jd9613.h"
-#include "lvgl.h"
-#include "pin_config.h"
-#include "SPI.h"
-#include "time.h"
-#include "esp_sntp.h"
+#include <jd9613.h>
+#include <lvgl.h>
+#include <pin_config.h>
+#include <SPI.h>
+#include <time.h>
+#include <esp_sntp.h>
 #define TOUCH_MODULES_CST_SELF
-#include "TouchLib.h"
-#include "Wire.h"
+#include <TouchLib.h>
+#include <Wire.h>
 #include <BLE.h>
 #include <WiFi.hpp>
 
@@ -439,7 +439,7 @@ void loop()
     }
   }
 
-  if (touch.read()) {
+  if (touch.read()) { //read touch
     if (!prevTouched) {
       touchStart = millis();
     }
@@ -453,7 +453,7 @@ void loop()
     prevTouched = true;
   } 
   else {
-  prevTouched = false;
+    prevTouched = false; // Reset touch state
   }
 
   // Update the label with the timer value

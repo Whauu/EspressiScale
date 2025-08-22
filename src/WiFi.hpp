@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include "wifiManager.h"
+#include <WiFiManager.h>
 #include <ESPmDNS.h>
 #include <WebServer.h>
 #include <HTTPUpdateServer.h>
@@ -21,7 +21,7 @@ const char* beta_uri  = "/Whauu/EspressiScale_web/main/beta/firmware.bin";
 
 #define pass "Espressi"
 #define DNS_ADDRESS "espressiscale"
-#define FW_VERSION "1.3.3"
+#define FW_VERSION "1.3.4"
 WebServer server(80);
 HTTPUpdateServer httpUpdater;
 
