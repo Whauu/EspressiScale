@@ -446,8 +446,13 @@ void loop()
 
     // If touch is still held and >1000ms
     if (millis() - touchStart > 1000) {
-      Serial.println("Long press detected, entering deep sleep");
-     deep_sleep();  // esp_deep_sleep_start();
+      Serial.println("Long press detected");
+      lv_label_set_text(label_weight, "Deep Sleep");
+      delay(2000); // Wait for 2 seconds to show the message
+      if (!touch.read()) {
+        Serial.println("Entering deep sleep");
+        deep_sleep();  // entering deep sleep
+      }
     }
 
     prevTouched = true;
