@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>EspressiScale Calibration</title>
+<style>
+  body {
+    font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    margin:0;padding:0;display:flex;align-items:center;justify-content:center;min-height:100vh;
+    background:#f2f2f5;color:#1c1c1e;
+  }
+  .card {
+    background:#fff;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.1);
+    padding:2rem;max-width:520px;width:90%;text-align:center;
+  }
+  h1 { font-size:1.75rem;margin-bottom:1rem;font-weight:600; }
+  .msg {
+    text-align:left;background:#f8f8fa;border:1px solid #e5e5ea;border-radius:12px;
+    padding:1rem;line-height:1.45;font-size:.95rem;color:#3a3a3c;min-height:4.5rem;
+    white-space:pre-wrap;
+  }
+  .btn {
+    display:inline-flex;align-items:center;justify-content:center;width:100%;
+    padding:.75rem 1.5rem;font-size:1rem;font-weight:500;color:#fff;background:#007aff;
+    border:0;border-radius:24px;box-shadow:0 4px 12px rgba(0,122,255,.3);
+    cursor:pointer;transition:background-color .2s, box-shadow .2s;margin-top:1rem;
+  }
+  .btn:hover { background:#005bb5;box-shadow:0 6px 16px rgba(0,91,181,.3); }
+  .btn:disabled { background:#b0b0b5;box-shadow:none;cursor:default; }
+  .note { font-size:.875rem;color:#6e6e73;margin-top:.75rem; }
+  .ok { color:#2b8a3e; }
+  .err { color:#ff3b30; }
+  .row { display:flex;gap:.5rem;justify-content:center;margin-top:1rem; }
+  .linkbtn { background:transparent;color:#007aff;border:none;cursor:pointer;padding:.25rem .5rem;font-size:.95rem;border-radius:8px; }
+  .linkbtn:hover { text-decoration:underline; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Calibration</h1>
+
+    <div id="dialog" class="msg">Press <em>Calibrate</em> to begin.</div>
+
+    <button id="actionBtn" class="btn">Calibrate</button>
+    <div id="status" class="note"></div>
+
+    <div class="row">
+      <button class="linkbtn" onclick="location.href='/'">← Back to Home</button>
+    </div>
+  </div>
+
+<script>
+  const dialog  = document.getElementById('dialog');
+  const statusE = document.getElementById('status');
+  const btn     = document.getElementById('actionBtn');
+
+  let needsConfirm = false;   // set by device prompts
+  let done = false;
+
+  function setStatus(text, cls = '') {
+    statusE.className = 'note ' + cls;
+    statusE.textContent = text || '';
+  }
+
+  function setDialog(text) {
+    dialog.textContent = text || '';
+  }
+
+  function setBtn(label, disabled=false) {
+    btn.textContent = label;
+    btn.disabled = disabled;
+  }
+
+  // Connect to SSE stream
+  const ev = new EventSource('/cal-events');
+  ev.onmessage = (e) => {
+    // Default event
+    try {
+      const msg = JSON.parse(e.data);
+      handleEvent(msg);
+    } catch {
+      // Fallback: plain text
+      setDialog(e.data);
+    }
+  };
+
+  ev.addEventListener('prompt', (e) => {
+    const msg = JSON.parse(e.data);
+    handleEvent(msg);
+  });
+
+  ev.addEventListener('status', (e) => {
+    const msg = JSON.parse(e.data);
+    setStatus(msg.text || '');
+  });
+
+  ev.addEventListener('done', (e) => {
+    const msg = JSON.parse(e.data);
+    setDialog(msg.text || 'Calibration complete.');
+    setStatus('Done', 'ok');
+    setBtn('Done', true);
+    needsConfirm = false;
+    done = true;
+  });
+
+  ev.addEventListener('error', (e) => {
+    const msg = JSON.parse(e.data);
+    setDialog(msg.text || 'Error');
+    setStatus('Calibration failed', 'err');
+    setBtn('Retry');
+    needsConfirm = false;
+    done = false;
+  });
+
+  function handleEvent(msg) {
+    // msg = { type: 'prompt'|'status'|'info', text: '...' , confirm: true|false }
+    if (msg.text) setDialog(msg.text);
+    if (msg.type === 'prompt') {
+      needsConfirm = !!msg.confirm;         // device expects a confirm
+      setBtn(needsConfirm ? 'Confirm' : 'Calibrate', false);
+    }
+  }
+
+  async function startCalibration() {
+    setStatus('');
+    setBtn('Starting…', true);
+    try {
+      const r = await fetch('/calibrate/start');
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      // The device will push the first prompt via SSE
+      setBtn('Confirm', true); // temp disabled until prompt arrives
+    } catch (e) {
+      setStatus('Failed to start: ' + e.message, 'err');
+      setBtn('Retry');
+    }
+  }
+
+  async function sendConfirm() {
+    setBtn('Working…', true);
+    setStatus('');
+    try {
+      const r = await fetch('/calibrate/confirm', { method: 'POST' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      // Device will push the next prompt / done via SSE
+    } catch (e) {
+      setStatus('Confirm failed: ' + e.message, 'err');
+      setBtn('Confirm', false);
+    }
+  }
+
+  btn.addEventListener('click', () => {
+    if (done) return;
+    if (!needsConfirm) {
+      startCalibration();
+    } else {
+      sendConfirm();
+    }
+  });
+</script>
+</body>
+</html>

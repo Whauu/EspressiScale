@@ -6,6 +6,7 @@
 #include <LittleFS.h>
 #include <HTTPClient.h>
 #include <HTTPUpdate.h>
+#include <scale.h>
 
 WiFiManager wifiManager;
 String header;
@@ -39,11 +40,21 @@ void startWifi(void * parameter){
     f.close();
   }
 );
+  server.on("/calibrate", HTTP_GET, []() {
+    auto f = LittleFS.open("/calibration.html", "r");
+    server.streamFile(f, "text/html");
+    f.close();
+  }
+);
 
   server.on("/getFW", HTTP_GET, [](){
   server.send(200, "text/plain", FW_VERSION);
   }
 );
+
+  server.on("/calibrate", HTTP_GET, []() {
+    doCalibration();
+  });
 
   // client-side check: return the GitHub version string
   server.on("/checkRemote", HTTP_GET, []() {
