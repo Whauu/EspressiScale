@@ -21,7 +21,7 @@ const char* beta_uri  = "/Whauu/EspressiScale_web/main/beta/firmware.bin";
 
 #define pass "Espressi"
 #define DNS_ADDRESS "espressiscale"
-#define FW_VERSION "1.3.4"
+#define FW_VERSION "1.3.5"
 WebServer server(80);
 HTTPUpdateServer httpUpdater;
 

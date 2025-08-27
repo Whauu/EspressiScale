@@ -447,6 +447,7 @@ void loop()
     // If touch is still held and >1000ms
     if (millis() - touchStart > 1000) {
       Serial.println("Long press detected");
+      lv_task_handler(); // Ensure LVGL updates the display
       lv_label_set_text(label_weight, "Deep Sleep");
       delay(2000); // Wait for 2 seconds to show the message
       if (!touch.read()) {
