@@ -215,14 +215,19 @@ class MyCallbacks : public BLECharacteristicCallbacks {
           NULL // Task handle
           );
         }
-        // LED commands: second byte 0x0A (only LED on/off are processed)
+        // LED commands: second byte 0x0A (Power off)
         else if (data[1] == 0x0A) {
-          if (data[2] == 0x00) {
-            Serial.println("LED off detected.");
-          } else if (data[2] == 0x01) {
-            Serial.println("LED on detected.");
+          if (data[2] == 0x02) {
+            Serial.println("Power off detected.");
+            deep_sleep();
           }
-          // Power down branch removed.
+        }
+        //Calibration commands: second byte 0x1A
+        else if (data[1] == 0x1A) {
+          if (data[2] == 0x00) {
+            Serial.println("Calibration via BLE");
+            doCalibration(); // This will only calibrate properly if necessary preconditions are met
+          }
         }
         // Timer commands: second byte 0x0B
         else if (data[1] == 0x0B) {
@@ -236,6 +241,10 @@ class MyCallbacks : public BLECharacteristicCallbacks {
             Serial.println("Timer reset detected.");
             timer = 0;
           }
+        }
+        else if (data[1] == 0x1B) {
+          Serial.println("Start OTA update detected.");
+          // doOTAupdate(); // To be implemented
         }
       }
     }
@@ -275,17 +284,17 @@ void setupBLE(void * parameter) {
   pServer->setCallbacks(new MyServerCallbacks());
 
   // Create BLE Service
-  BLEService *pService = pServer->createService(SUUID_DECENTSCALE);
+  BLEService *pService = pServer->createService(SUUID_ESPRESSISCALE);
 
   // Create BLE Write Characteristic
   pWriteCharacteristic = pService->createCharacteristic(
-      CUUID_DECENTSCALE_WRITE,
+      CUUID_ESPRESSISCALE_WRITE,
       BLECharacteristic::PROPERTY_WRITE);
   pWriteCharacteristic->setCallbacks(new MyCallbacks());
 
   // Create BLE Read/Notify Characteristic
   pReadCharacteristic = pService->createCharacteristic(
-      CUUID_DECENTSCALE_READ,
+      CUUID_ESPRESSISCALE_READ,
       BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
   pReadCharacteristic->addDescriptor(new BLE2902());
 
