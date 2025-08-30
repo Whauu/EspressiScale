@@ -22,7 +22,7 @@ const char* beta_uri  = "/Whauu/EspressiScale_web/main/beta/firmware.bin";
 
 #define pass "Espressi"
 #define DNS_ADDRESS "espressiscale"
-#define FW_VERSION "1.3.5"
+#define FW_VERSION "1.4.0"
 WebServer server(80);
 HTTPUpdateServer httpUpdater;
 
@@ -46,6 +46,16 @@ void startWifi(void * parameter){
     f.close();
   }
 );
+
+  server.on("/doTare", HTTP_GET, []() {
+    bool ok = tareScale();
+    server.send(ok ? 200 : 500, "text/plain", ok ? "OK" : "Tare failed");
+  });
+
+  server.on("/doCalibration", HTTP_GET, []() {
+    bool ok = doCalibration();
+    server.send(ok ? 200 : 500, "text/plain", ok ? "OK" : "Calibration failed");
+  });
 
   server.on("/getFW", HTTP_GET, [](){
   server.send(200, "text/plain", FW_VERSION);

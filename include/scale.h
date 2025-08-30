@@ -1,4 +1,4 @@
 void setupScale();
-void tareScale();
+bool tareScale();
 float updateScale();
-void doCalibration();
+bool doCalibration();

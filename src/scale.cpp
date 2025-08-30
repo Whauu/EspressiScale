@@ -23,11 +23,15 @@ void setupScale(){
   scale.tare(); 
 }
 
+bool actionDone(){
+  return true;
+}
+
 void reTareScale(){
   scale.tare();
 }
 
-void tareScale(){
+bool tareScale(){
   //delay(500);
   int times = 20;
 	long sum = 0;
@@ -50,28 +54,16 @@ void tareScale(){
     scale.set_offset(sum); // Set the scale to 0.0
 		delay(0);
 	}
+  finished = true;
+  return finished;
 }
+
 float updateScale(){
   return scale.get_units();
 }
 
-void doCalibration() {
-    // Ask user to clear the scale
-    Serial.println("Please clear the scale of any weights and press any key to continue...");
-    while (!Serial.available()) {
-      delay(100);
-    }
-    while (Serial.available()) Serial.read(); // Clear input buffer
-    scale.tare(); // Tare the scale after clearing
-
-    // Ask user to place 100g reference weight
-    Serial.println("Please place a 100g reference weight on the scale and press any key to continue...");
-    while (!Serial.available()) {
-      delay(100);
-    }
-    while (Serial.available()) Serial.read(); // Clear input buffer
-
-    // Read the measured value with the reference weight
+bool doCalibration() {
+    bool finished = false;
     float calibration_factors[5];
     float measured_values[5];
 
@@ -133,4 +125,6 @@ void doCalibration() {
     EEPROM.put(CALIBRATION_FACTOR_ADDR, calibration_factor);
     EEPROM.commit();
     scale.set_scale(calibration_factor);
+    finished = true;
+    return finished;
 }
