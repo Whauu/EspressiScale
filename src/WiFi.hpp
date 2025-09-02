@@ -6,6 +6,7 @@
 #include <LittleFS.h>
 #include <HTTPClient.h>
 #include <HTTPUpdate.h>
+#include <scale.h>
 
 WiFiManager wifiManager;
 String header;
@@ -19,15 +20,16 @@ const uint16_t port = 443;
 const char* uri  = "/Whauu/EspressiScale_web/main/webflash/firmware.bin";
 const char* beta_uri  = "/Whauu/EspressiScale_web/main/beta/firmware.bin";
 
+#define pass "Espressi"
 #define DNS_ADDRESS "espressiscale"
-#define FW_VERSION "1.3.2"
+#define FW_VERSION "1.4.0"
 WebServer server(80);
 HTTPUpdateServer httpUpdater;
 
 
 void startWifi(void * parameter){
   wifiManager.setConnectRetries(10);
-  wifiManager.autoConnect("EspressiScale");
+  wifiManager.autoConnect("EspressiScale", pass);
   MDNS.begin(DNS_ADDRESS);
   LittleFS.begin();
 
@@ -38,6 +40,32 @@ void startWifi(void * parameter){
     f.close();
   }
 );
+  server.on("/calibrate", HTTP_GET, []() {
+    auto f = LittleFS.open("/calibration.html", "r");
+    server.streamFile(f, "text/html");
+    f.close();
+  }
+);
+
+  server.on("/doTare", HTTP_GET, []() {
+    bool ok = tareScale();
+    server.send(ok ? 200 : 500, "text/plain", ok ? "OK" : "Tare failed");
+  });
+
+  server.on("/doCalibration50", HTTP_GET, []() {
+    bool ok = doCalibration(50);
+    server.send(ok ? 200 : 500, "text/plain", ok ? "OK" : "Calibration failed");
+  });
+
+  server.on("/doCalibration100", HTTP_GET, []() {
+    bool ok = doCalibration(100);
+    server.send(ok ? 200 : 500, "text/plain", ok ? "OK" : "Calibration failed");
+  });
+
+  server.on("/doCalibration200", HTTP_GET, []() {
+    bool ok = doCalibration(200);
+    server.send(ok ? 200 : 500, "text/plain", ok ? "OK" : "Calibration failed");
+  });
 
   server.on("/getFW", HTTP_GET, [](){
   server.send(200, "text/plain", FW_VERSION);

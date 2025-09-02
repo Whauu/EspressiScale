@@ -1,4 +1,6 @@
 void setupScale();
-void tareScale();
+bool tareScale();
 float updateScale();
-void setupCalibrationFactor();
+bool doCalibration(int referenceWeight);
+float getOffset();
+bool setOffset(float newOffset);
