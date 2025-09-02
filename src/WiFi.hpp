@@ -22,7 +22,7 @@ const char* beta_uri  = "/Whauu/EspressiScale_web/main/beta/firmware.bin";
 
 #define pass "Espressi"
 #define DNS_ADDRESS "espressiscale"
-#define FW_VERSION "1.4.0"
+#define FW_VERSION "2.0.0"
 WebServer server(80);
 HTTPUpdateServer httpUpdater;
 
@@ -52,8 +52,18 @@ void startWifi(void * parameter){
     server.send(ok ? 200 : 500, "text/plain", ok ? "OK" : "Tare failed");
   });
 
-  server.on("/doCalibration", HTTP_GET, []() {
-    bool ok = doCalibration();
+  server.on("/doCalibration50", HTTP_GET, []() {
+    bool ok = doCalibration(50);
+    server.send(ok ? 200 : 500, "text/plain", ok ? "OK" : "Calibration failed");
+  });
+
+  server.on("/doCalibration100", HTTP_GET, []() {
+    bool ok = doCalibration(100);
+    server.send(ok ? 200 : 500, "text/plain", ok ? "OK" : "Calibration failed");
+  });
+
+  server.on("/doCalibration200", HTTP_GET, []() {
+    bool ok = doCalibration(200);
     server.send(ok ? 200 : 500, "text/plain", ok ? "OK" : "Calibration failed");
   });
 
@@ -61,10 +71,6 @@ void startWifi(void * parameter){
   server.send(200, "text/plain", FW_VERSION);
   }
 );
-
-  server.on("/calibrate", HTTP_GET, []() {
-    doCalibration();
-  });
 
   // client-side check: return the GitHub version string
   server.on("/checkRemote", HTTP_GET, []() {

@@ -23,12 +23,13 @@ void setupScale(){
   scale.tare(); 
 }
 
-bool actionDone(){
-  return true;
+float getOffset(){
+  return scale.get_offset();
 }
 
-void reTareScale(){
-  scale.tare();
+bool setOffset(float newOffset){
+  scale.set_offset(newOffset);
+  return true;
 }
 
 bool tareScale(){
@@ -62,10 +63,13 @@ float updateScale(){
   return scale.get_units();
 }
 
-bool doCalibration() {
+bool doCalibration(int referenceWeight){
     bool finished = false;
     float calibration_factors[5];
     float measured_values[5];
+    if (referenceWeight <= 0) {
+      referenceWeight = 100; // Default to 100g if invalid
+    }
 
     for (int trial = 0; trial < 5; ++trial) {
       // Reset calibration factor to 1 before each trial
@@ -85,8 +89,8 @@ bool doCalibration() {
       int iter = 0;
       float trial_calibration_factor = calibration_factor;
 
-      while (abs(measured - 100) > tolerance && iter < max_iterations) {
-        trial_calibration_factor *= (measured / 100); // Adjust factor proportionally
+      while (abs(measured - referenceWeight) > tolerance && iter < max_iterations) {
+        trial_calibration_factor *= (measured / referenceWeight); // Adjust factor proportionally
         scale.set_scale(trial_calibration_factor);
         measured = scale.get_units(2);
         iter++;

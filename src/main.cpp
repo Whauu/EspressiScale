@@ -32,6 +32,9 @@ static unsigned long last_update = 0; // Last update time
 float currentWeight = 0.0; // Current weight
 static bool prevTouched = false;
 static unsigned long touchStart = 0;
+int version = 0;
+int subversion = 0;
+int patch = 0;
 
 static EventGroupHandle_t touch_eg;
 #define GET_TOUCH_INT _BV(1)
@@ -129,6 +132,20 @@ static void lv_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data
   }
 }
 
+void splitVersionString(const String& versionStr, int& version, int& subversion, int& patch) {
+  int firstDot = versionStr.indexOf('.');
+  int secondDot = versionStr.indexOf('.', firstDot + 1);
+
+  if (firstDot == -1 || secondDot == -1) {
+    version = subversion = patch = 0;
+    return;
+  }
+
+  version = versionStr.substring(0, firstDot).toInt();
+  subversion = versionStr.substring(firstDot + 1, secondDot).toInt();
+  patch = versionStr.substring(secondDot + 1).toInt();
+}
+
 // Helper function to calculate XOR checksum for outgoing data
 uint8_t calculateXOR(uint8_t *data, size_t len) {
   uint8_t xorValue = 0x03; // Starting value for XOR as per your protocol
@@ -136,6 +153,25 @@ uint8_t calculateXOR(uint8_t *data, size_t len) {
     xorValue ^= data[i];
   }
   return xorValue;
+}
+
+void encodeOffset(int32_t value, byte &byte1, byte &byte2, byte &byte3) {
+  uint32_t uvalue = static_cast<uint32_t>(value);
+  byte1 = (byte)((uvalue >> 16) & 0xFF);
+  byte2 = (byte)((uvalue >> 8) & 0xFF);
+  byte3 = (byte)(uvalue & 0xFF);
+}
+
+float decodeOffset(byte byte1, byte byte2, byte byte3) {
+  // Combine the three bytes into a 24-bit value
+  int32_t value = (byte1 << 16) | (byte2 << 8) | byte3;
+  
+  // Handle sign extension for 24-bit signed integer
+  if (value & 0x800000) {  // Check if the sign bit (bit 23) is set
+    value = value - 0x1000000;  // Convert to proper negative value
+  }
+  
+  return (float)value;
 }
 
 // Helper function to encode weight into two bytes
@@ -178,6 +214,59 @@ class MyCallbacks : public BLECharacteristicCallbacks {
     return expectedChecksum == calculatedChecksum;
   }
 
+  void sendBleTask(int taskNumber) {
+  if (deviceConnected) {
+    byte data[7];
+
+    data[0] = modelByte;
+    data[1] = 0xAA;  // Type byte for weight stable
+    data[2] = taskNumber;
+    data[3] = 0x00;
+    data[4] = 0x00;
+    data[5] = 0x00;
+    data[6] = calculateXOR(data, 6);  // Last byte is XOR validation
+
+    pReadCharacteristic->setValue(data, 7);
+    pReadCharacteristic->notify();
+  }
+}
+
+void sendBleOffset(float offset) {
+  if (deviceConnected) {
+    byte data[7];
+    byte byte1, byte2, byte3; 
+    encodeOffset(offset, byte1, byte2, byte3);
+
+    data[0] = modelByte;
+    data[1] = 0x66;  // Type byte for offset
+    data[2] = byte1;
+    data[3] = byte2;
+    data[4] = byte3;
+    data[5] = 0x00;
+    data[6] = calculateXOR(data, 6);  // Last byte is XOR validation
+
+    pReadCharacteristic->setValue(data, 7);
+    pReadCharacteristic->notify();
+  }
+}
+
+void sendFWVersion(int version, int subversion, int patch) {
+  if (deviceConnected) {
+    byte data[7];
+
+    data[0] = modelByte;
+    data[1] = 0x21;  // Type byte for FW version
+    data[2] = version;
+    data[3] = subversion;
+    data[4] = patch;
+    data[5] = 0x00;
+    data[6] = calculateXOR(data, 6);  // Last byte is XOR validation
+
+    pReadCharacteristic->setValue(data, 7);
+    pReadCharacteristic->notify();
+  }
+}
+
   void onWrite(BLECharacteristic *pWriteCharacteristic) {
     if (pWriteCharacteristic != nullptr) {
       size_t len = pWriteCharacteristic->getLength();
@@ -215,7 +304,7 @@ class MyCallbacks : public BLECharacteristicCallbacks {
           NULL // Task handle
           );
         }
-        // LED commands: second byte 0x0A (Power off)
+        // Power command: second byte 0x0A (Power off)
         else if (data[1] == 0x0A) {
           if (data[2] == 0x02) {
             Serial.println("Power off detected.");
@@ -225,8 +314,34 @@ class MyCallbacks : public BLECharacteristicCallbacks {
         //Calibration commands: second byte 0x1A
         else if (data[1] == 0x1A) {
           if (data[2] == 0x00) {
-            Serial.println("Calibration via BLE");
-            doCalibration(); // This will only calibrate properly if necessary preconditions are met
+            Serial.println("Calibration 100g reference");
+            bool success = doCalibration(100); // This will only calibrate properly if necessary preconditions are met
+            if (success) {
+              sendBleTask(1); // Success message
+            } else {
+              sendBleTask(0); // Failure message
+            }
+          }
+          else if (data[2] == 0x01) {
+            Serial.println("Calibration 200g reference");
+            bool success = doCalibration(200);
+            if (success) {
+              sendBleTask(1); // Success message
+            } else {
+              sendBleTask(0); // Failure message
+            }
+          }
+          else if (data[2] == 0x02) {
+            Serial.println("Calibration 50g reference");
+            bool success = doCalibration(50);
+            if (success) {
+              sendBleTask(1); // Success message
+            } else {
+              sendBleTask(0); // Failure message
+            }
+          }
+          else {
+            Serial.println("Unknown calibration command.");
           }
         }
         // Timer commands: second byte 0x0B
@@ -240,11 +355,44 @@ class MyCallbacks : public BLECharacteristicCallbacks {
           } else if (data[2] == 0x02) {
             Serial.println("Timer reset detected.");
             timer = 0;
+            timer_running = false;
           }
         }
         else if (data[1] == 0x1B) {
-          Serial.println("Start OTA update detected.");
-          // doOTAupdate(); // To be implemented
+          if (data[2] == 0x01) {
+            Serial.println("Check FW version command received.");
+            splitVersionString(FW_VERSION, version, subversion, patch);
+            sendFWVersion(version, subversion, patch); // Send FW version response
+          }
+          else if (data[2] == 0x02) {
+            Serial.println("Update command received.");
+            // doUpdate(); // To be implemented
+          }
+          else if (data[2] == 0x03) {
+            Serial.println("Beta update command received.");
+            // doBetaUpdate(); // To be implemented
+          }
+          else {
+            Serial.println("Unknown FW command.");
+          }
+        }
+        else if (data[1] == 0x22) {
+          float currentOffset = getOffset();
+          sendBleOffset(currentOffset); // Send current offset
+          Serial.print("Sent current offset: ");
+          Serial.println(currentOffset);
+        }
+        else if (data[1] == 0x44) {
+          float uvalue = decodeOffset(data[2], data[3], data[4]);
+          bool check = setOffset(uvalue);
+          if (check) {
+            Serial.print("Offset set successfully: ");
+            Serial.println(uvalue);
+            sendBleTask(3); // Success message
+          } else {
+            Serial.println("Failed to set offset.");
+            sendBleTask(0); // Failure message
+          }
         }
       }
     }
@@ -258,15 +406,16 @@ void sendBleWeight() {
     if (currentMillis - lastWeightNotifyTime >= weightNotifyInterval) {
       lastWeightNotifyTime = currentMillis;
       byte data[7];
+      int voltage = getBatteryVoltage() * 10;  // Get the current battery voltage
       float weight = currentWeight;
       byte weightByte1, weightByte2;
       encodeWeight(weight, weightByte1, weightByte2);
-      
+
       data[0] = modelByte;
       data[1] = 0xCE;  // Type byte for weight stable
       data[2] = weightByte1;
       data[3] = weightByte2;
-      data[4] = 0x00;
+      data[4] = voltage;
       data[5] = 0x00;
       data[6] = calculateXOR(data, 6);  // Calculate checksum
       
@@ -274,6 +423,8 @@ void sendBleWeight() {
       pReadCharacteristic->notify();
       Serial.print("Notified weight: ");
       Serial.println(weight);
+      Serial.print("Battery voltage: ");
+      Serial.println(voltage / 10.0);
     }
   }
 }
@@ -285,6 +436,9 @@ void setupBLE(void * parameter) {
 
   // Create BLE Service
   BLEService *pService = pServer->createService(SUUID_ESPRESSISCALE);
+  Serial.print("BLE service created");
+  Serial.print("Service UUID: ");
+  Serial.println(SUUID_ESPRESSISCALE);
 
   // Create BLE Write Characteristic
   pWriteCharacteristic = pService->createCharacteristic(
@@ -426,7 +580,12 @@ void loop()
       timer = 0; // Reset timer
       xTaskCreate( // To prevent halting the loop
         [] (void * parameter) {
-          tareScale(); // Tare the scale
+          bool ok = tareScale();
+          if (ok) {
+            Serial.println("Tare successful");
+          } else {
+            Serial.println("Tare failed");
+          }
           vTaskDelete(NULL); // Delete the task once done
         },
         "TareTask", // Task name

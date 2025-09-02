@@ -43,6 +43,12 @@
 
     <button id="actionBtn" class="btn">Calibrate</button>
     <div id="status" class="note"></div>
+    <label for="referenceSelect" class="note" style="margin-top:1.5rem;">Reference weight:</label>
+    <select id="referenceSelect">
+      <option value="50">50</option>
+      <option value="100">100</option>
+      <option value="200">200</option>
+    </select>
 
     <div class="row">
       <button class="linkbtn" onclick="location.href='/'">← Back to Home</button>
@@ -67,6 +73,16 @@
     btn.disabled = disabled;
   }
 
+  function getSuffix() {
+    const val = referenceSelect.value;
+    if (val === '50' || val === '100' || val === '200') {
+      return val;
+    }
+    else {
+      return '100'; // default
+    }
+}
+
   function render() {
     switch (phase) {
       case 0:
@@ -80,7 +96,7 @@
         setStatus('');
         break;
       case 2:
-        setDialog('Place a 100g reference weight');
+        setDialog(`Place a ${getSuffix()} reference weight`);
         setBtn('Start calibration', false);
         setStatus('');
         break;
@@ -113,8 +129,9 @@
   async function callDoCalibration() {
     phase = 3; render();                       // show starting state
     setStatus('');
+    const suffix = getSuffix();
     try {
-      const res = await fetch('/doCalibration'); // Send calibration request
+      const res = await fetch(`/doCalibration${suffix}`); // Send calibration request
       if (!res.ok) throw new Error('HTTP ' + res.status);
       // Success → show complete + Done button
       phase = 4; render();
