@@ -7,6 +7,8 @@ EspressiScale is a minimalist and affordable espresso scale designed to provide 
 - **Accurate Weighing:** Provides precise measurements for your espresso brewing.
 - **Built-in Timer:** Monitors brewing time to ensure optimal extraction.
 - **Minimalist Design:** A simple and modern solution focusing on essential features.
+- **BLE:** It now supports both Gaggimate and Clevercoffee (Beanconqueror support coming oct).
+- **Calibration:** Now built in.
 
 ## Makerworld
 This was also published on [makerworld](https://makerworld.com/en/models/1212476-espressiscale-small-minimalist-espresso-scale#profileId-1227630) for easy 3D printing.
@@ -39,15 +41,12 @@ This was also published on [makerworld](https://makerworld.com/en/models/1212476
 
 1. Open [this](https://doc.espressiscale.com) website in chrome
 2. Connect your scale and hold down boot while pressing res once, then releasing boot
-3. Press calibration button, selecting your scale (jtag), hit "install calibration tool"
-4. Once done, press res button on the esp and open "logs & console"
-(Take note of your calibration factor)
-5. Follow steps 2, 3 and 4, but for "install"
-6. If you see "calibration factor 0.00", press reset device at bottom right of window
-7. Input your calibration factor and hit enter (This should save it permanently)
-8. You're done :)
-
-Note: To change calibration factor you'll have to reinstall EspressiScale
+3. Press Install button, selecting your scale (jtag), hit "install EspressiScale"
+4. Once done, look for wifi AP "EspressiScale" and connect to it (Password: Espressi)
+5. Put in the credentials for your home wifi.
+6. Connect to the same wifi with any device and go to espressiscale.local
+7. Press calibration and follow the on screen steps.
+8. You're done!
 
 ## Update:
 ![til](https://raw.githubusercontent.com/Whauu/EspressiScale/main/IMG_1073.GIF)
@@ -56,6 +55,7 @@ Note: To change calibration factor you'll have to reinstall EspressiScale
 **Touch controls:**
 - **Left Display:** Starts and stops timer
 - **Right Display:** Tares weight and resets timer
+- **Hold Any Side:** Goes to sleep
   
 **Power:**
   - Touch the display anywhere to wake it up
@@ -63,7 +63,7 @@ Note: To change calibration factor you'll have to reinstall EspressiScale
 
     
 ## Re-Calibrating purchased scale
-- Follow installation instructions
+- Go to espressiscale.local, press calibration and follow the steps
 
 ## License
 This project is licensed under my own license
