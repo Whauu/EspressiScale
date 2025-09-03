@@ -30,6 +30,7 @@ static int timer = 0; // Initialize timer to 0
 static bool timer_running = false; // Timer running state
 static unsigned long last_update = 0; // Last update time
 float currentWeight = 0.0; // Current weight
+float batteryStatus = 3.2;
 
 static EventGroupHandle_t touch_eg;
 #define GET_TOUCH_INT _BV(1)
@@ -456,7 +457,11 @@ void loop()
 
   lastWeight = currentWeight; // Update the last weight value
 
-  float batteryStatus = getBatteryVoltage(); // Update the battery status
+  static unsigned long lastBatteryCheck = -60000;
+  if (millis() - lastBatteryCheck >= 60000) { // Check every 1 minute
+    batteryStatus = getBatteryVoltage(); // Update the battery status
+    lastBatteryCheck = millis();
+  }
   
   if (batteryStatus < 2.8) // Check if battery voltage is below 3V
   {
