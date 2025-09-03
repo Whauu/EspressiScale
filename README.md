@@ -23,8 +23,8 @@ This was also published on [makerworld](https://makerworld.com/en/models/1212476
 | 1        | [HX711](https://www.aliexpress.com/item/1005006293368575.html?spm=a2g0o.productlist.main.19.4b5474a6I3ualW&algo_pvid=8b13f76d-943b-4f75-8bf8-1741b29a8fbf&algo_exp_id=8b13f76d-943b-4f75-8bf8-1741b29a8fbf-9&pdp_ext_f=%7B%22order%22%3A%22487%22%2C%22eval%22%3A%221%22%7D&pdp_npi=4%40dis%21EUR%212.05%210.93%21%21%2115.75%217.18%21%40211b430817420419468811798eb8b9%2112000036639761167%21sea%21NO%210%21ABX&curPageLogUid=WayeqeRbhY4T&utparam-url=scene%3Asearch%7Cquery_from%3A)                     | High precision (available on AliExpress)           |
 |1         | [USB type C port](https://a.aliexpress.com/_EyspPbK)             | Not yet implimented
 | 4        | [M3x3.0 Threaded Inserts](https://cnckitchen.store/products/heat-set-insert-m3-x-3-short-version-100-pieces)     | (I used CNCkitchen)                                |
-| 2        | M3x10 Screws                |                                                    |
-| 2        | M3x12 Screws                |                                                    |
+| 2        | M3x10 Screws                | M3x6 for V2                                        |
+| 2        | M3x12 Screws                | M3x8 for V2                                        |
 | 2        | M3x12 Countersunk Screws    |                                                    |
 | -        | Heat Shrink                 |                                                    |
 
@@ -33,7 +33,7 @@ This was also published on [makerworld](https://makerworld.com/en/models/1212476
 | Quantity | Component                   | Details/Notes                                      |
 |----------|-----------------------------|----------------------------------------------------|
 | 2        | Extra Heated Inserts        |                                                    |
-| 2        | M3x6 Screws                 |                                                    |
+| 2        | M3x6 Screws                 | M3x4 for V2                                        |
 
 
 
