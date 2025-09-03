@@ -35,6 +35,7 @@ static unsigned long touchStart = 0;
 int version = 0;
 int subversion = 0;
 int patch = 0;
+float batteryStatus = 3.2;
 
 static EventGroupHandle_t touch_eg;
 #define GET_TOUCH_INT _BV(1)
@@ -406,7 +407,7 @@ void sendBleWeight() {
     if (currentMillis - lastWeightNotifyTime >= weightNotifyInterval) {
       lastWeightNotifyTime = currentMillis;
       byte data[7];
-      int voltage = getBatteryVoltage() * 10;  // Get the current battery voltage
+      int voltage = batteryStatus * 10;  // Get the current battery voltage
       float weight = currentWeight;
       byte weightByte1, weightByte2;
       encodeWeight(weight, weightByte1, weightByte2);
@@ -660,9 +661,13 @@ void loop()
 
   lastWeight = currentWeight; // Update the last weight value
 
-  float batteryStatus = getBatteryVoltage(); // Update the battery status
+  static unsigned long lastBatteryCheck = -60000;
+  if (millis() - lastBatteryCheck >= 60000) { // Check every 1 minute
+    batteryStatus = getBatteryVoltage(); // Update the battery status
+    lastBatteryCheck = millis();
+  }
   
-  if (batteryStatus < 2.8) // Check if battery voltage is below 3V
+  if (batteryStatus < 3) // Check if battery voltage is below 3V
   {
     Serial.println("Battery voltage is low. Entering deep sleep...");
     // Display low battery message before going to deep sleep
