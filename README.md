@@ -47,6 +47,7 @@ This was also published on [makerworld](https://makerworld.com/en/models/1212476
 6. Connect to the same wifi with any device and go to espressiscale.local
 7. Press calibration and follow the on screen steps.
 8. You're done!
+(If you see nan, please calibrate and restart the scale)
 
 ## Update:
 ![til](https://raw.githubusercontent.com/Whauu/EspressiScale/main/IMG_1073.GIF)
