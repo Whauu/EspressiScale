@@ -85,6 +85,7 @@ inline void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t
   lv_disp_flush_ready(disp);
 }
 
+// Deep sleep hold pins
 const gpio_num_t holdPins[] = {
   GPIO_NUM_14,
   GPIO_NUM_15,
@@ -93,6 +94,7 @@ const gpio_num_t holdPins[] = {
   GPIO_NUM_18
 };
 
+// Deep sleep function
 static void deep_sleep()
 {
   for (auto pin : holdPins) {
@@ -105,6 +107,7 @@ static void deep_sleep()
   esp_deep_sleep_start();
 }
 
+// Touchpad read function
 static void lv_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data)
 {
   if (touch.read())
@@ -133,6 +136,7 @@ static void lv_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data
   }
 }
 
+// Helper function to split version string into integers
 void splitVersionString(const String& versionStr, int& version, int& subversion, int& patch) {
   int firstDot = versionStr.indexOf('.');
   int secondDot = versionStr.indexOf('.', firstDot + 1);
@@ -156,6 +160,7 @@ uint8_t calculateXOR(uint8_t *data, size_t len) {
   return xorValue;
 }
 
+// Helper function to encode offset into three bytes
 void encodeOffset(int32_t value, byte &byte1, byte &byte2, byte &byte3) {
   uint32_t uvalue = static_cast<uint32_t>(value);
   byte1 = (byte)((uvalue >> 16) & 0xFF);
@@ -163,6 +168,7 @@ void encodeOffset(int32_t value, byte &byte1, byte &byte2, byte &byte3) {
   byte3 = (byte)(uvalue & 0xFF);
 }
 
+// Helper function to decode offset from three bytes
 float decodeOffset(byte byte1, byte byte2, byte byte3) {
   // Combine the three bytes into a 24-bit value
   int32_t value = (byte1 << 16) | (byte2 << 8) | byte3;
@@ -215,6 +221,7 @@ class MyCallbacks : public BLECharacteristicCallbacks {
     return expectedChecksum == calculatedChecksum;
   }
 
+  // Function to send simple task response via BLE notification
   void sendBleTask(int taskNumber) {
   if (deviceConnected) {
     byte data[7];
@@ -232,6 +239,7 @@ class MyCallbacks : public BLECharacteristicCallbacks {
   }
 }
 
+// Function to send offset via BLE notification
 void sendBleOffset(float offset) {
   if (deviceConnected) {
     byte data[7];
@@ -251,6 +259,7 @@ void sendBleOffset(float offset) {
   }
 }
 
+// Function to send firmware version via BLE notification
 void sendFWVersion(int version, int subversion, int patch) {
   if (deviceConnected) {
     byte data[7];
@@ -268,6 +277,7 @@ void sendFWVersion(int version, int subversion, int patch) {
   }
 }
 
+  // Handle write requests from the client
   void onWrite(BLECharacteristic *pWriteCharacteristic) {
     if (pWriteCharacteristic != nullptr) {
       size_t len = pWriteCharacteristic->getLength();
@@ -430,6 +440,7 @@ void sendBleWeight() {
   }
 }
 
+// BLE Setup Task
 void setupBLE(void * parameter) {
   BLEDevice::init("EspressiScale"); // Initialize BLE with device name
   pServer = BLEDevice::createServer();

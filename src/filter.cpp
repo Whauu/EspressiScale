@@ -1,4 +1,4 @@
-#include <arduino.h>
+#include <Arduino.h>
 #include <scale.h>
 
 #define WINDOW_SIZE 5
