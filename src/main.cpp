@@ -282,6 +282,12 @@ void sendFWVersion(int version, int subversion, int patch) {
     if (pWriteCharacteristic != nullptr) {
       size_t len = pWriteCharacteristic->getLength();
       uint8_t *data = (uint8_t *)pWriteCharacteristic->getData();
+      
+      std::string v;
+      v.assign((const char*)data, (const char*)data + len);
+
+      if (EspressiOtaBLE::HandleWriteFrame(v)) return;
+
 
       // Debug: Print received data in HEX format
       Serial.print("Received HEX: ");
