@@ -14,35 +14,44 @@
 #include <BLE.h>
 #include <WiFi.hpp>
 
+extern "C" {
+  #include "esp_gatt_common_api.h"
+}
+
 #ifndef BOARD_HAS_PSRAM
 #error "Please turn on PSRAM option to OPI PSRAM"
 #endif
 
-static const uint16_t screenWidth = 294 * 2; // screenWidth = 294 * 2;
-static const uint16_t screenHeight = 126;
-static const size_t lv_buffer_size = screenWidth * screenHeight * sizeof(lv_color_t);
-static lv_disp_draw_buf_t draw_buf;
-static lv_color_t *buf = NULL;
-lv_obj_t *label_weight = NULL;
-lv_obj_t *label_timer = NULL; // New label for timer
+// ============================
+// globals
+// ============================
+static EventGroupHandle_t   touch_eg;
+static const uint16_t       screenWidth      = 294 * 2;
+static const uint16_t       screenHeight     = 126;
+static const size_t         lv_buffer_size   = screenWidth * screenHeight * sizeof(lv_color_t);
+static lv_disp_draw_buf_t   draw_buf;
+static lv_color_t          *buf              = NULL;
+lv_obj_t                   *label_weight     = NULL;
+lv_obj_t                   *label_timer      = NULL;
 
-static int timer = 0; // Initialize timer to 0
-static bool timer_running = false; // Timer running state
-static unsigned long last_update = 0; // Last update time
-float currentWeight = 0.0; // Current weight
-static bool prevTouched = false;
-static unsigned long touchStart = 0;
-int version = 0;
-int subversion = 0;
-int patch = 0;
-float batteryStatus = 3.2;
+static int                  timer            = 0;
+static bool                 timer_running    = false;
+static unsigned long        last_update      = 0;
+float                       currentWeight    = 0.0;
+static bool                 prevTouched      = false;
+static unsigned long        touchStart       = 0;
+float                       batteryStatus    = 3.2;
+int                         version          = 0;
+int                         subversion       = 0;
+int                         patch            = 0;
 
-static EventGroupHandle_t touch_eg;
-#define GET_TOUCH_INT _BV(1)
-
+// ---- Logo map ----
 extern uint8_t espressiscale_left_map[];
 extern uint8_t espressiscale_right_map[];
 
+// ============================
+// Display and Touch
+// ============================
 TouchLib touch(Wire, PIN_IIC_SDA, PIN_IIC_SCL, CTS820_SLAVE_ADDRESS);
 
 void my_print(const char *buf)
@@ -85,28 +94,6 @@ inline void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t
   lv_disp_flush_ready(disp);
 }
 
-// Deep sleep hold pins
-const gpio_num_t holdPins[] = {
-  GPIO_NUM_14,
-  GPIO_NUM_15,
-  GPIO_NUM_16,
-  GPIO_NUM_17,
-  GPIO_NUM_18
-};
-
-// Deep sleep function
-static void deep_sleep()
-{
-  for (auto pin : holdPins) {
-    gpio_reset_pin(pin);
-    gpio_set_direction(pin, GPIO_MODE_OUTPUT);
-    gpio_set_level(pin, 0);
-    gpio_hold_en(pin);
-  }
-  esp_wifi_stop();
-  esp_deep_sleep_start();
-}
-
 // Touchpad read function
 static void lv_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data)
 {
@@ -136,7 +123,31 @@ static void lv_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data
   }
 }
 
-// Helper function to split version string into integers
+// ============================
+// Deep Sleep
+// ============================
+const gpio_num_t holdPins[] = {
+  GPIO_NUM_14,
+  GPIO_NUM_15,
+  GPIO_NUM_16,
+  GPIO_NUM_17,
+  GPIO_NUM_18
+};
+
+static void deep_sleep()
+{
+  for (auto pin : holdPins) {
+    gpio_reset_pin(pin);
+    gpio_set_direction(pin, GPIO_MODE_OUTPUT);
+    gpio_set_level(pin, 0);
+    gpio_hold_en(pin);
+  }
+  esp_deep_sleep_start();
+}
+
+// ============================
+// Helper functions
+// ============================
 void splitVersionString(const String& versionStr, int& version, int& subversion, int& patch) {
   int firstDot = versionStr.indexOf('.');
   int secondDot = versionStr.indexOf('.', firstDot + 1);
@@ -151,7 +162,7 @@ void splitVersionString(const String& versionStr, int& version, int& subversion,
   patch = versionStr.substring(secondDot + 1).toInt();
 }
 
-// Helper function to calculate XOR checksum for outgoing data
+// Calculate XOR checksum for outgoing data
 uint8_t calculateXOR(uint8_t *data, size_t len) {
   uint8_t xorValue = 0x03; // Starting value for XOR as per your protocol
   for (size_t i = 1; i < len - 1; i++) { // Start at index 1; reserve last byte for checksum
@@ -160,7 +171,7 @@ uint8_t calculateXOR(uint8_t *data, size_t len) {
   return xorValue;
 }
 
-// Helper function to encode offset into three bytes
+// Encode offset into three bytes
 void encodeOffset(int32_t value, byte &byte1, byte &byte2, byte &byte3) {
   uint32_t uvalue = static_cast<uint32_t>(value);
   byte1 = (byte)((uvalue >> 16) & 0xFF);
@@ -168,7 +179,7 @@ void encodeOffset(int32_t value, byte &byte1, byte &byte2, byte &byte3) {
   byte3 = (byte)(uvalue & 0xFF);
 }
 
-// Helper function to decode offset from three bytes
+// Decode offset from three bytes
 float decodeOffset(byte byte1, byte byte2, byte byte3) {
   // Combine the three bytes into a 24-bit value
   int32_t value = (byte1 << 16) | (byte2 << 8) | byte3;
@@ -181,14 +192,16 @@ float decodeOffset(byte byte1, byte byte2, byte byte3) {
   return (float)value;
 }
 
-// Helper function to encode weight into two bytes
+// Encode weight into two bytes
 void encodeWeight(float weight, byte &byte1, byte &byte2) {
   int weightInt = (int)(weight * 10);  // Convert to an integer (weight in grams * 10)
   byte1 = (byte)((weightInt >> 8) & 0xFF);
   byte2 = (byte)(weightInt & 0xFF);
 }
 
-// BLE Server Callbacks
+// ============================
+// BLE Functions
+// ============================
 class MyServerCallbacks : public BLEServerCallbacks {
   void onConnect(BLEServer *pServer) {
     deviceConnected = true;
@@ -221,9 +234,9 @@ class MyCallbacks : public BLECharacteristicCallbacks {
     return expectedChecksum == calculatedChecksum;
   }
 
-  // Function to send simple task response via BLE notification
+  // Send simple task response via BLE notification
   void sendBleTask(int taskNumber) {
-  if (deviceConnected) {
+  if (deviceConnected && !EspressiOtaBLE::IsActive()) {
     byte data[7];
 
     data[0] = modelByte;
@@ -239,9 +252,9 @@ class MyCallbacks : public BLECharacteristicCallbacks {
   }
 }
 
-// Function to send offset via BLE notification
+// Send offset via BLE notification
 void sendBleOffset(float offset) {
-  if (deviceConnected) {
+  if (deviceConnected && !EspressiOtaBLE::IsActive()) {
     byte data[7];
     byte byte1, byte2, byte3; 
     encodeOffset(offset, byte1, byte2, byte3);
@@ -259,9 +272,9 @@ void sendBleOffset(float offset) {
   }
 }
 
-// Function to send firmware version via BLE notification
+// Send firmware version via BLE notification
 void sendFWVersion(int version, int subversion, int patch) {
-  if (deviceConnected) {
+  if (deviceConnected && !EspressiOtaBLE::IsActive()) {
     byte data[7];
 
     data[0] = modelByte;
@@ -282,6 +295,8 @@ void sendFWVersion(int version, int subversion, int patch) {
     if (pWriteCharacteristic != nullptr) {
       size_t len = pWriteCharacteristic->getLength();
       uint8_t *data = (uint8_t *)pWriteCharacteristic->getData();
+
+      if (EspressiOtaBLE::HandleWriteFrameRaw(data, len)) return;
 
       // Debug: Print received data in HEX format
       Serial.print("Received HEX: ");
@@ -375,17 +390,6 @@ void sendFWVersion(int version, int subversion, int patch) {
             splitVersionString(FW_VERSION, version, subversion, patch);
             sendFWVersion(version, subversion, patch); // Send FW version response
           }
-          else if (data[2] == 0x02) {
-            Serial.println("Update command received.");
-            // doUpdate(); // To be implemented
-          }
-          else if (data[2] == 0x03) {
-            Serial.println("Beta update command received.");
-            // doBetaUpdate(); // To be implemented
-          }
-          else {
-            Serial.println("Unknown FW command.");
-          }
         }
         else if (data[1] == 0x22) {
           float currentOffset = getOffset();
@@ -410,9 +414,9 @@ void sendFWVersion(int version, int subversion, int patch) {
   }
 };
 
-// Function to send weight via BLE notification
+// Send weight via BLE notification
 void sendBleWeight() {
-  if (deviceConnected) {
+  if (deviceConnected && !EspressiOtaBLE::IsActive()) {
     unsigned long currentMillis = millis();
     if (currentMillis - lastWeightNotifyTime >= weightNotifyInterval) {
       lastWeightNotifyTime = currentMillis;
@@ -440,7 +444,9 @@ void sendBleWeight() {
   }
 }
 
-// BLE Setup Task
+// ============================
+// BLE Setup task
+// ============================
 void setupBLE(void * parameter) {
   BLEDevice::init("EspressiScale"); // Initialize BLE with device name
   pServer = BLEDevice::createServer();
@@ -455,7 +461,7 @@ void setupBLE(void * parameter) {
   // Create BLE Write Characteristic
   pWriteCharacteristic = pService->createCharacteristic(
       CUUID_ESPRESSISCALE_WRITE,
-      BLECharacteristic::PROPERTY_WRITE);
+      BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR);
   pWriteCharacteristic->setCallbacks(new MyCallbacks());
 
   // Create BLE Read/Notify Characteristic
@@ -469,6 +475,7 @@ void setupBLE(void * parameter) {
 
   // Start advertising
   pServer->getAdvertising()->start();
+  esp_ble_gatt_set_local_mtu(517);
   Serial.println("BLE advertising started");
   vTaskDelete(NULL); // Delete this task after setup
 }
@@ -541,7 +548,7 @@ void setup()
   label_timer = lv_label_create(lv_scr_act());
   lv_obj_set_style_text_font(label_timer, &lv_font_montserrat_48, LV_PART_MAIN);
   lv_obj_align(label_timer, LV_ALIGN_LEFT_MID, 10, 0); // Align to the left
-  
+
   xTaskCreatePinnedToCore(
     startWifi, // Function to run on this task
     "startWifi", // Task name
@@ -551,7 +558,6 @@ void setup()
     NULL, // Task handle
     0 // Task core
   );
-
   xTaskCreatePinnedToCore(
     setupBLE, // Function to run on this task
     "setupBLE", // Task name
@@ -655,7 +661,7 @@ void loop()
   static float lastWeight = currentWeight; // Last weight value
 
   // Check if the timer is not running and weight hasn't changed significantly
-  if (!timer_running && abs(currentWeight - lastWeight) < 1.0)
+  if (!timer_running && abs(currentWeight - lastWeight) < 1.0 && !EspressiOtaBLE::IsActive())
   {
     unsigned long current_time = millis();
     if (current_time - last_activity_time >= 300000) // 5 minutes
@@ -673,7 +679,7 @@ void loop()
   lastWeight = currentWeight; // Update the last weight value
 
   static unsigned long lastBatteryCheck = -60000;
-  if (millis() - lastBatteryCheck >= 60000) { // Check every 1 minute
+  if (millis() - lastBatteryCheck >= 60000 && !EspressiOtaBLE::IsActive()) { // Check every 1 minute
     batteryStatus = getBatteryVoltage(); // Update the battery status
     lastBatteryCheck = millis();
   }

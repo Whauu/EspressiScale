@@ -15,6 +15,9 @@ HX711 scale;
 void setupScale(){
   EEPROM.begin(512);
   EEPROM.get(CALIBRATION_FACTOR_ADDR, calibration_factor);
+  if (isnan(calibration_factor) || calibration_factor == 0) {
+    calibration_factor = 1; // Reset to default if invalid
+  }
   pinMode(LOADCELL_POWER_PIN, OUTPUT);
   digitalWrite(LOADCELL_POWER_PIN, HIGH);
   scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
@@ -37,7 +40,7 @@ bool tareScale(){
   int times = 20;
 	long sum = 0;
   long lastSum = 0;
-  boolean finished = false;
+  bool finished = false;
   int stableCounter = 0;
 
 	for (byte i = 0; i < times && !finished; i++) {
