@@ -375,6 +375,7 @@ void sendFWVersion(int version, int subversion, int patch) {
           if (data[2] == 0x03) {
             Serial.println("Timer start detected.");
             timer_running = true;
+            last_update = millis();
           } else if (data[2] == 0x00) {
             Serial.println("Timer stop detected.");
             timer_running = false;
@@ -679,7 +680,7 @@ void loop()
   lastWeight = currentWeight; // Update the last weight value
 
   static unsigned long lastBatteryCheck = -60000;
-  if (millis() - lastBatteryCheck >= 60000 && !EspressiOtaBLE::IsActive()) { // Check every 1 minute
+  if (millis() - lastBatteryCheck >= 60000 && !EspressiOtaBLE::IsActive() && !deviceConnected) { // Check every 1 minute
     batteryStatus = getBatteryVoltage(); // Update the battery status
     lastBatteryCheck = millis();
   }

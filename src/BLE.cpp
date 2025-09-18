@@ -219,9 +219,9 @@ release:
 
 
   static void startOtaWorkerIfNeeded() {
-  if (!s_otaQ)  s_otaQ  = xQueueCreate(16, sizeof(OtaMsg)); // was 12
+  if (!s_otaQ)  s_otaQ  = xQueueCreate(24, sizeof(OtaMsg)); // was 12
   if (!s_otaTask)
-    xTaskCreatePinnedToCore(otaWriterTask, "ota_writer", 10240, nullptr, 4, &s_otaTask, 1); // was 8192,5
+    xTaskCreatePinnedToCore(otaWriterTask, "ota_writer", 12288, nullptr, 5, &s_otaTask, 1); // was 8192,5
   }
 
 
