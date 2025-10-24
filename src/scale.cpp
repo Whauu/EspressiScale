@@ -1,16 +1,17 @@
-#include <HX711.h>
 #include <Arduino.h>
 #include <EEPROM.h>
+#include <ADS1232.h>
 
-#define LOADCELL_DOUT_PIN  4
-#define LOADCELL_SCK_PIN   3
-#define LOADCELL_POWER_PIN 6
+#define LOADCELL_DOUT_PIN  5
+#define LOADCELL_SCK_PIN   7
+#define LOADCELL_POWER_PIN 8
+#define LOADCELL_SPEED     4
 
-float calibration_factor = 1; // Default value
+float calibration_factor = 1.0f; // Default value
 const int CALIBRATION_FACTOR_ADDR = 0; // EEPROM address
 bool isCalibrating = false;
 
-HX711 scale;
+ADS1232 scale;
 
 void setupScale(){
   EEPROM.begin(512);
@@ -20,8 +21,7 @@ void setupScale(){
   }
   pinMode(LOADCELL_POWER_PIN, OUTPUT);
   digitalWrite(LOADCELL_POWER_PIN, HIGH);
-  scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
-  scale.set_gain();
+  scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN, LOADCELL_POWER_PIN, LOADCELL_SPEED, FAST);
   scale.set_scale(calibration_factor);
   scale.tare(); 
 }
@@ -44,7 +44,7 @@ bool tareScale(){
   int stableCounter = 0;
 
 	for (byte i = 0; i < times && !finished; i++) {
-		sum = scale.read();
+		scale.read(sum);
     if (sum == lastSum) {
       stableCounter++;
       if (stableCounter >= 2) {
@@ -63,7 +63,9 @@ bool tareScale(){
 }
 
 float updateScale(){
-  return scale.get_units();
+  float updated = 0.0f;
+  scale.get_units(updated, 1);
+  return updated;
 }
 
 bool doCalibration(int referenceWeight){
@@ -79,7 +81,8 @@ bool doCalibration(int referenceWeight){
       calibration_factor = 1;
       scale.set_scale(calibration_factor);
 
-      float measured = scale.get_units(2);
+      float measured;
+      scale.get_units(measured, 2);
       Serial.print("Trial ");
       Serial.print(trial + 1);
       Serial.print(": measured value = ");
@@ -95,7 +98,7 @@ bool doCalibration(int referenceWeight){
       while (abs(measured - referenceWeight) > tolerance && iter < max_iterations) {
         trial_calibration_factor *= (measured / referenceWeight); // Adjust factor proportionally
         scale.set_scale(trial_calibration_factor);
-        measured = scale.get_units(2);
+        scale.get_units(measured, 2);
         iter++;
       }
 
