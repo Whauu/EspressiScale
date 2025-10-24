@@ -486,6 +486,8 @@ void setup()
   for (auto pin : holdPins) {
     gpio_hold_dis(pin);
   }
+  pinMode(38, OUTPUT); // Power enable pin
+  digitalWrite(38, HIGH); // Enable power
 
   touch_eg = xEventGroupCreate();
 
