@@ -31,6 +31,8 @@ static bool timer_running = false; // Timer running state
 static unsigned long last_update = 0; // Last update time
 float currentWeight = 0.0; // Current weight
 float batteryStatus = 3.2;
+static bool                 prevTouched      = false;
+static unsigned long        touchStart       = 0;
 
 static EventGroupHandle_t touch_eg;
 #define GET_TOUCH_INT _BV(1)
@@ -426,6 +428,29 @@ void loop()
       timer++;
       last_update = current_time;
     }
+  }
+
+  if (touch.read()) { //read touch
+    if (!prevTouched) {
+      touchStart = millis();
+    }
+
+    // If touch is still held and >1000ms
+    if (millis() - touchStart > 1000) {
+      Serial.println("Long press detected");
+      lv_task_handler(); // Ensure LVGL updates the display
+      lv_label_set_text(label_weight, "Deep Sleep");
+      delay(2000); // Wait for 2 seconds to show the message
+      if (!touch.read()) {
+        Serial.println("Entering deep sleep");
+        deep_sleep();  // entering deep sleep
+      }
+    }
+
+    prevTouched = true;
+  } 
+  else {
+    prevTouched = false; // Reset touch state
   }
 
   // Update the label with the timer value
