@@ -2,17 +2,17 @@
 #include <battery.h>
 #include <scale.h>
 #include <filter.h>
-#include <jd9613.h>
 #include <lvgl.h>
 #include <pin_config.h>
 #include <SPI.h>
 #include <time.h>
 #include <esp_sntp.h>
 #define TOUCH_MODULES_CST_SELF
-#include <TouchLib.h>
 #include <Wire.h>
 #include <BLE.h>
 #include <WiFi.hpp>
+#include <TFT_eSPI.h>
+#include <TouchDrvCSTXXX.hpp>
 
 extern "C" {
   #include "esp_gatt_common_api.h"
@@ -26,13 +26,22 @@ extern "C" {
 // globals
 // ============================
 static EventGroupHandle_t   touch_eg;
-static const uint16_t       screenWidth      = 294 * 2;
-static const uint16_t       screenHeight     = 126;
+uint16_t                    screenWidth      = TFT_WIDTH;
+uint16_t                    screenHeight     = TFT_HEIGHT;
+uint16_t                    move_X           = 0;
+uint16_t                    move_Y           = 0;
+#define LV_ROTATION                            1
+#define BUFFER_SIZE         (TFT_HEIGHT * 5)
+#define LV_SCREEN_COMPENSATION                 5
 static const size_t         lv_buffer_size   = screenWidth * screenHeight * sizeof(lv_color_t);
 static lv_disp_draw_buf_t   draw_buf;
-static lv_color_t          *buf              = NULL;
+static lv_color_t          *buf1               [BUFFER_SIZE];
+static lv_color_t          *buf2               [BUFFER_SIZE];
 lv_obj_t                   *label_weight     = NULL;
 lv_obj_t                   *label_timer      = NULL;
+TFT_eSPI                    tft              = TFT_eSPI();
+TouchDrvCSTXXX              touch;
+int16_t                     x[5], y[5];
 
 static int                  timer            = 0;
 static bool                 timer_running    = false;
@@ -52,74 +61,88 @@ extern uint8_t espressiscale_right_map[];
 // ============================
 // Display and Touch
 // ============================
-TouchLib touch(Wire, PIN_IIC_SDA, PIN_IIC_SCL, CTS820_SLAVE_ADDRESS);
 
+#if LV_USE_LOG != 0
+/* Serial debugging */
 void my_print(const char *buf)
 {
   Serial.printf(buf);
   Serial.flush();
 }
+#endif
 
-inline void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p)
+/* Display flushing */
+void my_disp_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_t *color_p)
 {
-  // uint32_t w = (area->x2 - area->x1 + 1);
+  uint32_t w = (area->x2 - area->x1 + 1);
   uint32_t h = (area->y2 - area->y1 + 1);
 
-  int _w1 = 294 - area->x1;
-  int _w2 = area->x2 - 294 + 1;
+  tft.startWrite();
+  tft.setAddrWindow(area->x1, area->y1, w, h);
+  tft.pushColors((uint16_t *)&color_p->full, w * h, true);
+  tft.endWrite();
 
-  if (_w1 > 0)
-  {
-    TFT_CS_0_L;
-    lcd_PushColors_SoftRotation(area->x1,
-                  area->y1,
-                  _w1,
-                  h,
-                  (uint16_t *)&color_p->full,
-                  2); // Horizontal display
-    TFT_CS_0_H;
-  }
-  if (_w2 > 0)
-  {
-    TFT_CS_1_L;
-    lcd_PushColors_SoftRotation(0,
-                  area->y1,
-                  _w2,
-                  h,
-                  (uint16_t *)&color_p->full,
-                  1); // Horizontal display
-    TFT_CS_1_H;
-  }
-
-  lv_disp_flush_ready(disp);
+  lv_disp_flush_ready(disp_drv);
 }
 
 // Touchpad read function
-static void lv_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data)
+void my_touchpad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
 {
-  if (touch.read())
+  x[1] = x[0];
+  bool touched = touch.getPoint(x, y, touch.getSupportTouchPoint());
+  if (!touched)
   {
-    TP_Point t = touch.getPoint(0);
-    int16_t x = 126 - t.x;
-    int16_t y = x;
-    x = t.y;
-    data->point.x = x;
-    t.x = x;
-    data->point.y = y;
-    t.y = y;
-
-    /* Adjust black shadow areas. */
-    if (t.x > 326)
-      data->point.x = t.x - 32;
-
-    if (t.x > 294 && t.x < 326)
-      data->state = LV_INDEV_STATE_REL;
-    else
-      data->state = LV_INDEV_STATE_PR;
+    data->state = LV_INDEV_STATE_REL;
   }
   else
   {
-    data->state = LV_INDEV_STATE_REL;
+    data->state = LV_INDEV_STATE_PR;
+
+    /*Set the coordinates*/
+    data->point.x = x[0];
+    data->point.y = y[0] - 1;
+
+    move_X = x[1] - x[0];
+  }
+}
+
+void lvgl_setRotation(int rotation)
+{
+  tft.setRotation(rotation); /* Landscape orientation, flipped */
+  switch (rotation)
+  {
+  case 0:
+    screenHeight = TFT_WIDTH + LV_SCREEN_COMPENSATION;
+    screenWidth = TFT_HEIGHT;
+    move_X = -LV_SCREEN_COMPENSATION;
+    move_Y = 0;
+    touch.setSwapXY(0);
+    touch.setMirrorXY(0, 0);
+    break;
+  case 1:
+    screenHeight = TFT_HEIGHT;
+    screenWidth = TFT_WIDTH + LV_SCREEN_COMPENSATION;
+    move_X = 0;
+    move_Y = -LV_SCREEN_COMPENSATION;
+    touch.setSwapXY(1);
+    touch.setMirrorXY(1, 0);
+    break;
+  case 2:
+    screenHeight = TFT_WIDTH + LV_SCREEN_COMPENSATION;
+    screenWidth = TFT_HEIGHT;
+    move_X = -LV_SCREEN_COMPENSATION;
+    move_Y = 0;
+    touch.setSwapXY(0);
+    touch.setMirrorXY(1, 0);
+    break;
+  case 3:
+    screenHeight = TFT_HEIGHT;
+    screenWidth = TFT_WIDTH + LV_SCREEN_COMPENSATION;
+    move_X = 0;
+    move_Y = -LV_SCREEN_COMPENSATION;
+    touch.setSwapXY(1);
+    touch.setMirrorXY(0, 1);
+    break;
   }
 }
 
@@ -487,28 +510,23 @@ void setup()
     gpio_hold_dis(pin);
   }
 
-  touch_eg = xEventGroupCreate();
+  touch.setPins(1, 21);
+  touch.begin(Wire, CST816_SLAVE_ADDRESS, 3, 2);
 
-  esp_sleep_enable_ext0_wakeup(GPIO_NUM_12, 0); // Touch interrupt is connected to GPIO 12
+  esp_sleep_enable_ext0_wakeup(GPIO_NUM_38, 0); // Touch interrupt is connected to GPIO 12
 
   Serial.begin(921600);
   Serial.println("HX711 with median filter and exponential smoothing");
-  jd9613_init();
-  TFT_CS_0_L;
-  lcd_PushColors(0, 0, 294, 126, (uint16_t *)espressiscale_right_map, 1);
-  TFT_CS_0_H;
-  TFT_CS_1_L;
-  lcd_PushColors(0, 0, 294, 126, (uint16_t *)espressiscale_left_map, 3);
-  TFT_CS_1_H;
-  delay(3000);
+
+  tft.begin();                  /* TFT init */
+  lvgl_setRotation(LV_ROTATION);
 
   lv_init();
 
-  buf = (lv_color_t *)ps_malloc(lv_buffer_size);
 
-  assert(buf);
 
-  lv_disp_draw_buf_init(&draw_buf, buf, NULL, screenWidth * screenHeight);
+
+  lv_disp_draw_buf_init(&draw_buf, buf1, buf2, BUFFER_SIZE);
 
   /*Initialize the display*/
   static lv_disp_drv_t disp_drv;
@@ -517,18 +535,19 @@ void setup()
   /*Set the resolution of the display*/
   disp_drv.hor_res = screenWidth;
   disp_drv.ver_res = screenHeight;
+  disp_drv.offset_x = move_X;
+  disp_drv.offset_y = move_Y;
   disp_drv.flush_cb = my_disp_flush;
   disp_drv.draw_buf = &draw_buf;
   disp_drv.full_refresh = 1;
-
   lv_disp_drv_register(&disp_drv);
 
-  Wire.begin(PIN_IIC_SDA, PIN_IIC_SCL);
-  touch.init();
+  
+
   static lv_indev_drv_t indev_drv;
   lv_indev_drv_init(&indev_drv);
   indev_drv.type = LV_INDEV_TYPE_POINTER;
-  indev_drv.read_cb = lv_touchpad_read;
+  indev_drv.read_cb = my_touchpad_read;
   lv_indev_drv_register(&indev_drv);
 
   setupScale();
@@ -583,12 +602,12 @@ void loop()
   snprintf(weight_str, sizeof(weight_str), "%.1f g", currentWeight);
   lv_label_set_text(label_weight, weight_str);
 
-  if (touch.read())
+  uint8_t touched = touch.getPoint(x, y, touch.getSupportTouchPoint());
+  if (touched)
   {
-    TP_Point t = touch.getPoint(0);
-    int16_t x = t.y; // Adjusted to match the screen orientation
+    
 
-    if (x > screenWidth / 2)
+    if (x[0] > screenWidth / 2)
     {
       timer_running = !timer_running; // Toggle timer state
       delay(100); // Debounce delay
@@ -627,7 +646,7 @@ void loop()
     }
   }
 
-  if (touch.read()) { //read touch
+  if (touched) { //read touch
     if (!prevTouched) {
       touchStart = millis();
     }
@@ -638,7 +657,7 @@ void loop()
       lv_task_handler(); // Ensure LVGL updates the display
       lv_label_set_text(label_weight, "Deep Sleep");
       delay(2000); // Wait for 2 seconds to show the message
-      if (!touch.read()) {
+      if (!touch.getPoint(x, y, touch.getSupportTouchPoint())) {
         Serial.println("Entering deep sleep");
         deep_sleep();  // entering deep sleep
       }
