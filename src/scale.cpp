@@ -2,9 +2,9 @@
 #include <Arduino.h>
 #include <EEPROM.h>
 
-#define LOADCELL_DOUT_PIN  4
-#define LOADCELL_SCK_PIN   3
-#define LOADCELL_POWER_PIN 6
+#define LOADCELL_DOUT_PIN  45
+#define LOADCELL_SCK_PIN   46
+#define LOADCELL_POWER_PIN 39
 
 float calibration_factor = 1; // Default value
 const int CALIBRATION_FACTOR_ADDR = 0; // EEPROM address

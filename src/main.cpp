@@ -13,6 +13,7 @@
 #include <WiFi.hpp>
 #include <TFT_eSPI.h>
 #include <TouchDrvCSTXXX.hpp>
+#include "espressilogo.h"
 
 extern "C" {
   #include "esp_gatt_common_api.h"
@@ -33,7 +34,6 @@ uint16_t                    move_Y           = 0;
 #define LV_ROTATION                            1
 #define BUFFER_SIZE         (TFT_HEIGHT * 5)
 #define LV_SCREEN_COMPENSATION                 5
-static const size_t         lv_buffer_size   = screenWidth * screenHeight * sizeof(lv_color_t);
 static lv_disp_draw_buf_t   draw_buf;
 static lv_color_t          *buf1               [BUFFER_SIZE];
 static lv_color_t          *buf2               [BUFFER_SIZE];
@@ -55,8 +55,7 @@ int                         subversion       = 0;
 int                         patch            = 0;
 
 // ---- Logo map ----
-extern uint8_t espressiscale_left_map[];
-extern uint8_t espressiscale_right_map[];
+extern uint8_t espressilogo_map[];
 
 // ============================
 // Display and Touch
@@ -506,43 +505,44 @@ void setupBLE(void * parameter) {
 
 void setup()
 {
-  for (auto pin : holdPins) {
+  /*for (auto pin : holdPins) {
     gpio_hold_dis(pin);
-  }
+  }*/
 
   touch.setPins(1, 21);
   touch.begin(Wire, CST816_SLAVE_ADDRESS, 3, 2);
 
   esp_sleep_enable_ext0_wakeup(GPIO_NUM_38, 0); // Touch interrupt is connected to GPIO 12
 
-  Serial.begin(921600);
+  Serial.begin(115200);
   Serial.println("HX711 with median filter and exponential smoothing");
 
   tft.begin();                  /* TFT init */
   lvgl_setRotation(LV_ROTATION);
-
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextColor(TFT_WHITE);
+  tft.setTextSize(3);
+  tft.setTextDatum(MC_DATUM);
+  tft.drawString("EspressiScale", 142, 38);
+  delay(2000); // Show the logo for 2 seconds
   lv_init();
 
 
 
 
   lv_disp_draw_buf_init(&draw_buf, buf1, buf2, BUFFER_SIZE);
-
   /*Initialize the display*/
   static lv_disp_drv_t disp_drv;
   lv_disp_drv_init(&disp_drv);
-
-  /*Set the resolution of the display*/
-  disp_drv.hor_res = screenWidth;
-  disp_drv.ver_res = screenHeight;
+  /*Change the following line to your display resolution*/
+  disp_drv.hor_res = screenHeight;
+  disp_drv.ver_res = screenWidth;
   disp_drv.offset_x = move_X;
   disp_drv.offset_y = move_Y;
   disp_drv.flush_cb = my_disp_flush;
   disp_drv.draw_buf = &draw_buf;
-  disp_drv.full_refresh = 1;
   lv_disp_drv_register(&disp_drv);
 
-  
 
   static lv_indev_drv_t indev_drv;
   lv_indev_drv_init(&indev_drv);
@@ -551,22 +551,17 @@ void setup()
   lv_indev_drv_register(&indev_drv);
 
   setupScale();
-  setupBattery();
-
+  //setupBattery();
   // Clear the display after showing the logo
-  lv_obj_clean(lv_scr_act());
-
-  // Set the background color to black
-  lv_obj_set_style_bg_color(lv_scr_act(), lv_color_black(), LV_PART_MAIN);
 
   // Create a label to display the weight
   label_weight = lv_label_create(lv_scr_act());
-  lv_obj_set_style_text_font(label_weight, &lv_font_montserrat_48, LV_PART_MAIN);
+  lv_obj_set_style_text_font(label_weight, &lv_font_montserrat_36, LV_PART_MAIN);
   lv_obj_align(label_weight, LV_ALIGN_RIGHT_MID, -10, 0);
 
   // Create a label to display the timer
   label_timer = lv_label_create(lv_scr_act());
-  lv_obj_set_style_text_font(label_timer, &lv_font_montserrat_48, LV_PART_MAIN);
+  lv_obj_set_style_text_font(label_timer, &lv_font_montserrat_36, LV_PART_MAIN);
   lv_obj_align(label_timer, LV_ALIGN_LEFT_MID, 10, 0); // Align to the left
 
   xTaskCreatePinnedToCore(
@@ -588,20 +583,23 @@ void setup()
     0 // Task core
   );
   tareScale(); // Tare the scale at startup
+  delay(2000); // Show the logo for 2 seconds
+  tft.fillScreen(TFT_BLACK);
 }
 
 void loop()
 {
   server.handleClient();
   // Read filtered weight
-  currentWeight = medianFilter();
-  sendBleWeight(); // Send weight via BLE notification
+  currentWeight = millis() / 1000.0; // Placeholder for actual weight reading
+  
+  //sendBleWeight(); // Send weight via BLE notification
 
   // Update the label with the current weight
   char weight_str[16];
   snprintf(weight_str, sizeof(weight_str), "%.1f g", currentWeight);
   lv_label_set_text(label_weight, weight_str);
-
+  lv_timer_handler(); /* let the GUI do its work */
   uint8_t touched = touch.getPoint(x, y, touch.getSupportTouchPoint());
   if (touched)
   {
@@ -675,7 +673,6 @@ void loop()
   lv_label_set_text(label_timer, timer_str);
 
   // Handle LittlevGL tasks
-  lv_task_handler();
   delay(5);
   static unsigned long last_activity_time = 0; // Last activity time
   static float lastWeight = currentWeight; // Last weight value
