@@ -591,9 +591,9 @@ void loop()
 {
   server.handleClient();
   // Read filtered weight
-  currentWeight = millis() / 1000.0; // Placeholder for actual weight reading
+  currentWeight = medianFilter(); // Placeholder for actual weight reading
   
-  //sendBleWeight(); // Send weight via BLE notification
+  sendBleWeight(); // Send weight via BLE notification
 
   // Update the label with the current weight
   char weight_str[16];
