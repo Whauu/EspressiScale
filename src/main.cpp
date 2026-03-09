@@ -2,17 +2,30 @@
 #include <battery.h>
 #include <scale.h>
 #include <filter.h>
-#include <jd9613.h>
 #include <lvgl.h>
 #include <pin_config.h>
 #include <SPI.h>
 #include <time.h>
 #include <esp_sntp.h>
 #define TOUCH_MODULES_CST_SELF
-#include <TouchLib.h>
 #include <Wire.h>
 #include <BLE.h>
 #include <WiFi.hpp>
+#include "FT6336U.h"
+#include <TFT_GC9D01N.h>
+
+#define I2C_SDA       10
+#define I2C_SCL       11
+#define INT_N_PIN     12
+#define RST_N_PIN     9
+#define TFT1_CS       14
+#define TFT2_CS       13
+#define LED_PIN       21
+#define TOUCH_PIN     1
+#define TOUCH_CE_PIN  39
+#define TFT1_EN   {digitalWrite(TFT2_CS, HIGH);digitalWrite(TFT1_CS, LOW);}
+#define TFT2_EN   {digitalWrite(TFT1_CS, HIGH);digitalWrite(TFT2_CS, LOW);}
+#define DISP_BUF_SIZE (screenWidth * screenHeight)
 
 extern "C" {
   #include "esp_gatt_common_api.h"
@@ -25,14 +38,15 @@ extern "C" {
 // ============================
 // globals
 // ============================
-static EventGroupHandle_t   touch_eg;
-static const uint16_t       screenWidth      = 294 * 2;
-static const uint16_t       screenHeight     = 126;
+static const uint32_t       screenWidth      = 40;
+static const uint32_t       screenHeight     = 320;
 static const size_t         lv_buffer_size   = screenWidth * screenHeight * sizeof(lv_color_t);
 static lv_disp_draw_buf_t   draw_buf;
 static lv_color_t          *buf              = NULL;
+static lv_disp_drv_t        disp_drv;
 lv_obj_t                   *label_weight     = NULL;
 lv_obj_t                   *label_timer      = NULL;
+lv_disp_t                  *disp;
 
 static int                  timer            = 0;
 static bool                 timer_running    = false;
@@ -52,7 +66,9 @@ extern uint8_t espressiscale_right_map[];
 // ============================
 // Display and Touch
 // ============================
-TouchLib touch(Wire, PIN_IIC_SDA, PIN_IIC_SCL, CTS820_SLAVE_ADDRESS);
+FT6336U       ft6336u(I2C_SDA, I2C_SCL, RST_N_PIN, INT_N_PIN);
+FT6336U_TouchPointType tp;
+TFT_GC9D01N_Class tft;
 
 void my_print(const char *buf)
 {
@@ -60,67 +76,88 @@ void my_print(const char *buf)
   Serial.flush();
 }
 
-inline void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p)
+static void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p)
 {
-  // uint32_t w = (area->x2 - area->x1 + 1);
-  uint32_t h = (area->y2 - area->y1 + 1);
+    uint32_t w = (area->x2 - area->x1 + 1);
+    uint32_t h = (area->y2 - area->y1 + 1);
 
-  int _w1 = 294 - area->x1;
-  int _w2 = area->x2 - 294 + 1;
+    if (area->y1 <= 160 && area->y2 <= 160) {
+        TFT1_EN
+        tft.DrawImage(area->x1, area->y1, w, (h > 160 ? 160 : h), (uint16_t *)color_p);
+    } else if (area->y1 > 160 && area->y2 > 160) {
+        TFT2_EN
+        tft.DrawImage(area->x1, area->y1 - 159, w, h, (uint16_t *)color_p);
 
-  if (_w1 > 0)
-  {
-    TFT_CS_0_L;
-    lcd_PushColors_SoftRotation(area->x1,
-                  area->y1,
-                  _w1,
-                  h,
-                  (uint16_t *)&color_p->full,
-                  2); // Horizontal display
-    TFT_CS_0_H;
-  }
-  if (_w2 > 0)
-  {
-    TFT_CS_1_L;
-    lcd_PushColors_SoftRotation(0,
-                  area->y1,
-                  _w2,
-                  h,
-                  (uint16_t *)&color_p->full,
-                  1); // Horizontal display
-    TFT_CS_1_H;
-  }
+    } else {
+        uint32_t h1 = (160 - area->y1);
+        uint32_t h2 = (area->y2 - 160 + 1);
+        TFT1_EN
+        tft.BlockWrite(area->x1, area->x1 + w - 1, area->y1, 159);
+        SPI.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, SPI_MODE0));
+        DC_D;
+        for (int i = 0; i < (w * h1); i++) {
+            SPI.write16(*((uint16_t *)(color_p + i)));
+        }
+        SPI.endTransaction();
 
-  lv_disp_flush_ready(disp);
+        TFT2_EN
+        tft.BlockWrite(area->x1, area->x1 + w - 1, 0, area->y1 + h2 - 1);
+        SPI.beginTransaction(SPISettings(SPI_FREQUENCY, MSBFIRST, SPI_MODE0));
+        DC_D;
+        int j = w * h1;
+        for (int i = 0; i < (w * h2); i++) {
+            SPI.write16(*((uint16_t *)(color_p + i + j)));
+        }
+        SPI.endTransaction();
+    }
+
+    lv_disp_flush_ready(disp);
 }
 
 // Touchpad read function
-static void lv_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data)
+void my_input_read(lv_indev_drv_t *drv, lv_indev_data_t *data)
 {
-  if (touch.read())
-  {
-    TP_Point t = touch.getPoint(0);
-    int16_t x = 126 - t.x;
-    int16_t y = x;
-    x = t.y;
-    data->point.x = x;
-    t.x = x;
-    data->point.y = y;
-    t.y = y;
 
-    /* Adjust black shadow areas. */
-    if (t.x > 326)
-      data->point.x = t.x - 32;
+    if (tp.tp[0].status == 1) {
+        if (data->point.y > 165) {
+            data->point.x = tp.tp[0].x;
+            data->point.y = tp.tp[0].y - 40;
+        } else {
+            data->point.x = tp.tp[0].x;
+            data->point.y = tp.tp[0].y;
+        }
+        data->state = LV_INDEV_STATE_PRESSED;
+    } else {
+        data->state = LV_INDEV_STATE_RELEASED;
+    }
+}
 
-    if (t.x > 294 && t.x < 326)
-      data->state = LV_INDEV_STATE_REL;
-    else
-      data->state = LV_INDEV_STATE_PR;
-  }
-  else
-  {
-    data->state = LV_INDEV_STATE_REL;
-  }
+// Initialize the display and touch input
+void lv_port_disp_init(void)
+{
+    buf = (lv_color_t *)heap_caps_malloc(sizeof(lv_color_t) * DISP_BUF_SIZE,
+                                         MALLOC_CAP_DMA | MALLOC_CAP_8BIT);
+    lv_disp_draw_buf_init(&draw_buf, buf, NULL, DISP_BUF_SIZE);
+
+    lv_disp_drv_init(&disp_drv);
+    disp_drv.hor_res = screenWidth;
+    disp_drv.ver_res = screenHeight;
+    disp_drv.flush_cb = my_disp_flush;
+    disp_drv.draw_buf = &draw_buf;
+    // disp_drv.full_refresh=1;
+    disp_drv.sw_rotate = 1;
+    disp_drv.rotated = LV_DISP_ROT_90;
+    lv_disp_drv_register(&disp_drv);
+    disp = lv_disp_drv_register(&disp_drv); /*Register the driver and save the created display objects*/
+
+    //touch
+    static lv_indev_drv_t indev_drv;
+    lv_indev_drv_init(&indev_drv);
+    indev_drv.type = LV_INDEV_TYPE_POINTER  ;
+    indev_drv.read_cb = my_input_read;
+    /*Register the driver in LVGL and save the created input device object*/
+    lv_indev_t *my_indev = lv_indev_drv_register(&indev_drv);
+
 }
 
 // ============================
@@ -487,22 +524,40 @@ void setup()
     gpio_hold_dis(pin);
   }
 
-  touch_eg = xEventGroupCreate();
+  pinMode(LED_PIN, OUTPUT );
+  digitalWrite(LED_PIN, HIGH);
+
+  pinMode(TOUCH_CE_PIN, OUTPUT);
+  digitalWrite(TOUCH_CE_PIN, HIGH);
 
   esp_sleep_enable_ext0_wakeup(GPIO_NUM_12, 0); // Touch interrupt is connected to GPIO 12
 
   Serial.begin(921600);
   Serial.println("HX711 with median filter and exponential smoothing");
-  jd9613_init();
-  TFT_CS_0_L;
-  lcd_PushColors(0, 0, 294, 126, (uint16_t *)espressiscale_right_map, 1);
-  TFT_CS_0_H;
-  TFT_CS_1_L;
-  lcd_PushColors(0, 0, 294, 126, (uint16_t *)espressiscale_left_map, 3);
-  TFT_CS_1_H;
-  delay(3000);
+ 
+  tft.begin();
+  tft.backlight(255);
+  pinMode(TFT2_CS, OUTPUT);
+  pinMode(TFT1_CS, OUTPUT);
+
+  digitalWrite(TFT2_CS, LOW);
+  digitalWrite(TFT1_CS, LOW);
+  delay(200);
+  TFT2_EN
+  tft.writecommand(0x36);
+  tft.writedata(0x00);
+
+  ft6336u.begin();
+  delay(200);
+
+  TFT1_EN
+  tft.DispColor(0, 0, TFT_WIDTH, TFT_HEIGHT, BLACK);
+  TFT2_EN
+  tft.DispColor(0, 0, TFT_WIDTH, TFT_HEIGHT, BLACK);
+  delay(200);
 
   lv_init();
+  lv_port_disp_init();
 
   buf = (lv_color_t *)ps_malloc(lv_buffer_size);
 
@@ -523,12 +578,12 @@ void setup()
 
   lv_disp_drv_register(&disp_drv);
 
-  Wire.begin(PIN_IIC_SDA, PIN_IIC_SCL);
-  touch.init();
+  //Wire.begin(PIN_IIC_SDA, PIN_IIC_SCL);
+  //touch.init();
   static lv_indev_drv_t indev_drv;
   lv_indev_drv_init(&indev_drv);
   indev_drv.type = LV_INDEV_TYPE_POINTER;
-  indev_drv.read_cb = lv_touchpad_read;
+  //indev_drv.read_cb = lv_touchpad_read;
   lv_indev_drv_register(&indev_drv);
 
   setupScale();
@@ -542,12 +597,12 @@ void setup()
 
   // Create a label to display the weight
   label_weight = lv_label_create(lv_scr_act());
-  lv_obj_set_style_text_font(label_weight, &lv_font_montserrat_48, LV_PART_MAIN);
+  lv_obj_set_style_text_font(label_weight, &lv_font_montserrat_26, LV_PART_MAIN);
   lv_obj_align(label_weight, LV_ALIGN_RIGHT_MID, -10, 0);
 
   // Create a label to display the timer
   label_timer = lv_label_create(lv_scr_act());
-  lv_obj_set_style_text_font(label_timer, &lv_font_montserrat_48, LV_PART_MAIN);
+  lv_obj_set_style_text_font(label_timer, &lv_font_montserrat_26, LV_PART_MAIN);
   lv_obj_align(label_timer, LV_ALIGN_LEFT_MID, 10, 0); // Align to the left
 
   xTaskCreatePinnedToCore(
@@ -582,73 +637,80 @@ void loop()
   char weight_str[16];
   snprintf(weight_str, sizeof(weight_str), "%.1f g", currentWeight);
   lv_label_set_text(label_weight, weight_str);
+  tp = ft6336u.scan();
+  bool touched = tp.touch_count > 0;
 
-  if (touch.read())
+  if (touched)
+{
+  uint16_t x = tp.tp[0].x; // Adjusted to match the screen orientation
+
+  if (x > screenWidth / 2)
   {
-    TP_Point t = touch.getPoint(0);
-    int16_t x = t.y; // Adjusted to match the screen orientation
-
-    if (x > screenWidth / 2)
-    {
-      timer_running = !timer_running; // Toggle timer state
-      delay(100); // Debounce delay
-    }
-    else
-    {
-      timer_running = false; // Stop the timer
-      timer = 0; // Reset timer
-      xTaskCreate( // To prevent halting the loop
-        [] (void * parameter) {
-          bool ok = tareScale();
-          if (ok) {
-            Serial.println("Tare successful");
-          } else {
-            Serial.println("Tare failed");
-          }
-          vTaskDelete(NULL); // Delete the task once done
-        },
-        "TareTask", // Task name
-        10000, // Stack size
-        NULL, // Task parameter
-        1, // Task priority
-        NULL // Task handle
-      );
-      Serial.println("Tared and timer reset via touch");
-    }
+    timer_running = !timer_running; // Toggle timer state
+    delay(100); // Debounce delay
+    x = 0; // Reset x to prevent multiple toggles
   }
-
-  if (timer_running)
+  else
   {
-    unsigned long current_time = millis();
-    if (current_time - last_update >= 1000) // Update every second
-    {
-      timer++;
-      last_update = current_time;
+    timer_running = false; // Stop the timer
+    timer = 0; // Reset timer
+    xTaskCreate(
+      [] (void * parameter) {
+        bool ok = tareScale();
+        if (ok) {
+          Serial.println("Tare successful");
+        } else {
+          Serial.println("Tare failed");
+        }
+        vTaskDelete(NULL);
+      },
+      "TareTask",
+      10000,
+      NULL,
+      1,
+      NULL
+    );
+    Serial.println("Tared and timer reset via touch");
+    x = 0; // Reset x to prevent multiple toggles
+  }
+}
+
+if (timer_running)
+{
+  unsigned long current_time = millis();
+  if (current_time - last_update >= 1000)
+  {
+    timer++;
+    last_update = current_time;
+  }
+}
+
+if (touched)
+{
+  if (!prevTouched) {
+    touchStart = millis();
+  }
+
+  if (millis() - touchStart > 1000) {
+    Serial.println("Long press detected");
+    lv_task_handler();
+    lv_label_set_text(label_weight, "Deep Sleep");
+    delay(2000);
+
+    FT6336U_TouchPointType tp2 = ft6336u.scan();
+    if (tp2.touch_count == 0) {
+      Serial.println("Entering deep sleep");
+      tp = tp2; // Update the touch point to the latest scan
+      deep_sleep();
     }
   }
 
-  if (touch.read()) { //read touch
-    if (!prevTouched) {
-      touchStart = millis();
-    }
-
-    // If touch is still held and >1000ms
-    if (millis() - touchStart > 1000) {
-      Serial.println("Long press detected");
-      lv_task_handler(); // Ensure LVGL updates the display
-      lv_label_set_text(label_weight, "Deep Sleep");
-      delay(2000); // Wait for 2 seconds to show the message
-      if (!touch.read()) {
-        Serial.println("Entering deep sleep");
-        deep_sleep();  // entering deep sleep
-      }
-    }
-
-    prevTouched = true;
-  } 
-  else {
-    prevTouched = false; // Reset touch state
-  }
+  prevTouched = true;
+}
+else
+{
+  prevTouched = false;
+}
 
   // Update the label with the timer value
   char timer_str[16];

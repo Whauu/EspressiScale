@@ -1,7 +1,3 @@
-```eval_rst
-.. include:: /header.rst
-:github_url: |github_link_base|/get-started/platforms/tasmota-berry.md
-```
 # Tasmota and berry
 
 ## What is Tasmota?
@@ -35,7 +31,7 @@ In 2021, Tasmota added full support of LVGL for ESP32 based devices. It also int
 
 A comprehensive mapping of LVGL in Berry language is now available, similar to the mapping of Micropython. It allows to use +98% of all LVGL features. It is also possible to write custom widgets in Berry.
 
-Versions supported: LVGL v8.0.2, LodePNG v20201017, Freetype 2.10.4
+Versions supported: LVGL v8.3.0, LodePNG v20201017, Freetype 2.10.4
 
 ### Tasmota + Berry + LVGL could be used for:
 

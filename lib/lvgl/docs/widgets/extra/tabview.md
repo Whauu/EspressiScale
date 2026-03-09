@@ -1,7 +1,3 @@
-```eval_rst
-.. include:: /header.rst
-:github_url: |github_link_base|/widgets/extra/tabview.md
-```
 
 # Tabview (lv_tabview)
 
@@ -31,6 +27,10 @@ There are no special parts on the Tab view but the `lv_obj` and `lv_btnnmatrix` 
 ### Add tabs
 
 New tabs can be added with `lv_tabview_add_tab(tabview, "Tab name")`. This will return a pointer to an [lv_obj](/widgets/obj) object where the tab's content can be created.
+
+### Rename tabs
+
+A tab can be renamed with `lv_tabview_rename_tab(tabview, tab_id, "New Name")`.
 
 ### Change tab
 

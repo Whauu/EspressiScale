@@ -121,6 +121,20 @@ lv_obj_t * lv_tabview_add_tab(lv_obj_t * obj, const char * name)
     return page;
 }
 
+void lv_tabview_rename_tab(lv_obj_t * obj, uint32_t id, const char * new_name)
+{
+    LV_ASSERT_OBJ(obj, MY_CLASS);
+    lv_tabview_t * tabview = (lv_tabview_t *)obj;
+
+    if(id >= tabview->tab_cnt) return;
+    if(tabview->tab_pos & LV_DIR_HOR) id *= 2;
+
+    lv_mem_free(tabview->map[id]);
+    tabview->map[id] = lv_mem_alloc(strlen(new_name) + 1);
+    strcpy(tabview->map[id], new_name);
+    lv_obj_invalidate(obj);
+}
+
 void lv_tabview_set_act(lv_obj_t * obj, uint32_t id, lv_anim_enable_t anim_en)
 {
     LV_ASSERT_OBJ(obj, MY_CLASS);
@@ -308,6 +322,11 @@ static void cont_scroll_end_event_cb(lv_event_t * e)
         lv_tabview_set_act(tv, lv_tabview_get_tab_act(tv), LV_ANIM_OFF);
     }
     else if(code == LV_EVENT_SCROLL_END) {
+        lv_indev_t * indev = lv_indev_get_act();
+        if(indev && indev->proc.state == LV_INDEV_STATE_PRESSED) {
+            return;
+        }
+
         lv_point_t p;
         lv_obj_get_scroll_end(cont, &p);
 

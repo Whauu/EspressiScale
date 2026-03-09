@@ -1,7 +1,3 @@
-```eval_rst
-.. include:: /header.rst
-:github_url: |github_link_base|/porting/indev.md
-```
 # Input device interface
 
 ## Types of input devices
@@ -9,6 +5,7 @@
 To register an input device an `lv_indev_drv_t` variable has to be initialized. **Be sure to register at least one display before you register any input devices.**
 
 ```c
+/*Register at least one display before you register any input devices*/
 lv_disp_drv_register(&disp_drv);
 
 static lv_indev_drv_t indev_drv;

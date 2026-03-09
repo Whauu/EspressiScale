@@ -23,10 +23,6 @@ extern "C" {
 #error "LV_COLOR_DEPTH 24 is deprecated. Use LV_COLOR_DEPTH 32 instead (lv_conf.h)"
 #endif
 
-#if LV_COLOR_DEPTH != 32 && LV_COLOR_SCREEN_TRANSP != 0
-#error "LV_COLOR_SCREEN_TRANSP requires LV_COLOR_DEPTH == 32. Set it in lv_conf.h"
-#endif
-
 #if LV_COLOR_DEPTH != 16 && LV_COLOR_16_SWAP != 0
 #error "LV_COLOR_16_SWAP requires LV_COLOR_DEPTH == 16. Set it in lv_conf.h"
 #endif
@@ -444,9 +440,9 @@ LV_ATTRIBUTE_FAST_MEM static inline lv_color_t lv_color_mix(lv_color_t c1, lv_co
 {
     lv_color_t ret;
 
-#if LV_COLOR_DEPTH == 16 && LV_COLOR_16_SWAP == 0
+#if LV_COLOR_DEPTH == 16 && LV_COLOR_16_SWAP == 0 && LV_COLOR_MIX_ROUND_OFS == 0
     /*Source: https://stackoverflow.com/a/50012418/1999969*/
-    mix = (mix + 4) >> 3;
+    mix = (uint32_t)((uint32_t)mix + 4) >> 3;
     uint32_t bg = (uint32_t)((uint32_t)c2.full | ((uint32_t)c2.full << 16)) &
                   0x7E0F81F; /*0b00000111111000001111100000011111*/
     uint32_t fg = (uint32_t)((uint32_t)c1.full | ((uint32_t)c1.full << 16)) & 0x7E0F81F;

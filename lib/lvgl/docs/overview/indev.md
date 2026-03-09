@@ -1,7 +1,3 @@
-```eval_rst
-.. include:: /header.rst
-:github_url: |github_link_base|/overview/indev.md
-```
 # Input devices
 
 An input device usually means:
@@ -66,7 +62,7 @@ To prevent passing the gesture event to the parent from an object use `lv_obj_cl
 
 Note that, gestures are not triggered if an object is being scrolled.
 
-If you did some action on a gesture you can call `lv_indev_wait_release(lv_indev_act())` in the event handler to prevent LVGL sending further input device related events. 
+If you did some action on a gesture you can call `lv_indev_wait_release(lv_indev_get_act())` in the event handler to prevent LVGL sending further input device related events. 
 
 ## Keypad and encoder
 
