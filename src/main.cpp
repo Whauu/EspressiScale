@@ -31,6 +31,9 @@ uint16_t                    screenWidth      = TFT_WIDTH;
 uint16_t                    screenHeight     = TFT_HEIGHT;
 uint16_t                    move_X           = 0;
 uint16_t                    move_Y           = 0;
+static constexpr float      FLOW_MAX         = 2.5f;     
+static constexpr int        FLOW_DOT_COUNT   = 41; 
+static constexpr int        FLOW_WIDTH       = 284;  
 #define LV_ROTATION                            1
 #define BUFFER_SIZE         (TFT_HEIGHT * 5)
 #define LV_SCREEN_COMPENSATION                 5
@@ -43,6 +46,7 @@ static lv_color_t          *buf2               [BUFFER_SIZE];
 lv_obj_t                   *label_weight     = NULL;
 lv_obj_t                   *label_timer      = NULL;
 lv_obj_t                   *label_battery    = NULL;
+lv_obj_t                   *flow_label       = NULL;
 TFT_eSPI                    tft              = TFT_eSPI();
 TouchDrvCSTXXX              touch;
 int16_t                     x[5], y[5];
@@ -148,6 +152,66 @@ void lvgl_setRotation(int rotation)
     break;
   }
 }
+
+
+// ============================
+// Flow visualization
+// ============================
+
+void updateFlowDots(float flow)
+{
+  if (flow_label == NULL) return;
+
+  if (flow < 0.0f) flow = 0.0f;
+  if (flow > FLOW_MAX) flow = FLOW_MAX;
+
+  int dots = (int)((flow / FLOW_MAX) * FLOW_DOT_COUNT + 0.5f);
+  if (dots < 0) dots = 0;
+  if (dots > FLOW_DOT_COUNT) dots = FLOW_DOT_COUNT;
+
+  String s = "";
+  for (int i = 0; i < dots; i++) {
+    s += "•";
+  }
+
+  lv_label_set_text(flow_label, s.c_str());
+
+  // Color coding: green for good flow, yellow for low flow, red for no flow or overflow
+  lv_color_t c;
+  if (flow < 0.75f) {
+    lv_obj_set_style_text_color(flow_label, lv_palette_main(LV_PALETTE_RED), LV_PART_MAIN);
+  } 
+  else if (flow < 1.0f) {
+    lv_obj_set_style_text_color(flow_label, lv_palette_main(LV_PALETTE_YELLOW), LV_PART_MAIN);
+  } 
+  else if (flow <= 2.0f) {
+    lv_obj_set_style_text_color(flow_label, lv_palette_main(LV_PALETTE_GREEN), LV_PART_MAIN);
+  } 
+  else if (flow <= 2.25f) {
+    lv_obj_set_style_text_color(flow_label, lv_palette_main(LV_PALETTE_YELLOW), LV_PART_MAIN);
+  } 
+  else {
+    lv_obj_set_style_text_color(flow_label, lv_palette_main(LV_PALETTE_RED), LV_PART_MAIN);
+  }
+}
+
+void getFlow()
+{
+  static float lastWeightForFlow = currentWeight;
+  static unsigned long lastFlowTime = millis();
+
+  unsigned long currentTime = millis();
+  unsigned long timeDelta = currentTime - lastFlowTime;
+
+  if (timeDelta > 0) {
+    float weightDelta = currentWeight - lastWeightForFlow;
+    float flow = (weightDelta / (timeDelta / 1000.0f)); // grams per second
+    updateFlowDots(flow);
+    lastWeightForFlow = currentWeight;
+    lastFlowTime = currentTime;
+  }
+}
+
 
 // ============================
 // Deep Sleep
@@ -610,6 +674,18 @@ void setup()
   lv_obj_align(label_battery, LV_ALIGN_TOP_RIGHT, -8, 6);
   lv_label_set_text(label_battery, LV_SYMBOL_BATTERY_FULL);
 
+  flow_label = lv_label_create(lv_scr_act());   // Label for flow dots
+  lv_obj_set_width(flow_label, FLOW_WIDTH);
+  lv_obj_set_style_text_font(flow_label, &lv_font_montserrat_22, LV_PART_MAIN);
+  lv_obj_set_style_text_align(flow_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+  lv_label_set_long_mode(flow_label, LV_LABEL_LONG_CLIP);
+
+
+  lv_obj_align(flow_label, LV_ALIGN_BOTTOM_LEFT, 0, -4);
+
+ 
+  lv_label_set_text(flow_label, "");
+
   xTaskCreatePinnedToCore(
     startWifi, // Function to run on this task
     "startWifi", // Task name
@@ -640,6 +716,7 @@ void loop()
   currentWeight = medianFilter(); // Placeholder for actual weight reading
   
   sendBleWeight(); // Send weight via BLE notification
+  getFlow(); // Update flow dots based on weight change
 
   // Update the label with the current weight
   char weight_str[16];
