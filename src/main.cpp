@@ -29,10 +29,15 @@ static EventGroupHandle_t   touch_eg;
 static const uint16_t       screenWidth      = 294 * 2;
 static const uint16_t       screenHeight     = 126;
 static const size_t         lv_buffer_size   = screenWidth * screenHeight * sizeof(lv_color_t);
+static constexpr float      FLOW_MAX         = 2.5f;     
+static constexpr int        FLOW_DOT_COUNT   = 18; 
+static constexpr int        FLOW_WIDTH       = 294;    
 static lv_disp_draw_buf_t   draw_buf;
 static lv_color_t          *buf              = NULL;
 lv_obj_t                   *label_weight     = NULL;
 lv_obj_t                   *label_timer      = NULL;
+lv_obj_t                   *label_battery    = NULL;
+lv_obj_t                   *flow_label       = NULL;
 
 static int                  timer            = 0;
 static bool                 timer_running    = false;
@@ -143,6 +148,80 @@ static void deep_sleep()
     gpio_hold_en(pin);
   }
   esp_deep_sleep_start();
+}
+
+// ============================
+// Battery Icon Update
+// ============================
+
+void updateBatteryIcon(float pct)
+{
+  if (pct >= 4.1f)      lv_label_set_text(label_battery, LV_SYMBOL_BATTERY_FULL);
+  else if (pct >= 3.80f) lv_label_set_text(label_battery, LV_SYMBOL_BATTERY_3);
+  else if (pct >= 3.50f) lv_label_set_text(label_battery, LV_SYMBOL_BATTERY_2);
+  else if (pct >= 3.20f) lv_label_set_text(label_battery, LV_SYMBOL_BATTERY_1);
+  else                lv_label_set_text(label_battery, LV_SYMBOL_BATTERY_EMPTY);
+}
+
+
+// ============================
+// Flow Calculation and Display
+// ============================
+
+void updateFlowDots(float flow)
+{
+  if (flow_label == NULL) return;
+
+  if (flow < 0.0f) flow = 0.0f;
+  if (flow > FLOW_MAX) flow = FLOW_MAX;
+
+  int dots = (int)((flow / FLOW_MAX) * FLOW_DOT_COUNT + 0.5f);
+  if (dots < 0) dots = 0;
+  if (dots > FLOW_DOT_COUNT) dots = FLOW_DOT_COUNT;
+
+  String s = "";
+  for (int i = 0; i < dots; i++) {
+    s += "•";
+  }
+
+  lv_label_set_text(flow_label, s.c_str());
+
+  // Color coding: green for good flow, yellow for low flow, red for no flow or overflow
+  lv_color_t c;
+  if (flow < 0.75f) {
+    c = lv_color_hex(0xf800);   // red
+  }
+  else if (flow < 1.0f) {
+    c = lv_color_hex(0xfde0);   // yellow
+  }
+  else if (flow <= 2.0f) {
+    c = lv_color_hex(0x07e0);   // green
+  }
+  else if (flow <= 2.25f) {
+    c = lv_color_hex(0xfde0);   // yellow
+  }
+  else {
+    c = lv_color_hex(0xf800);   // red
+  }
+  lv_obj_set_style_text_color(flow_label, c, LV_PART_MAIN | LV_STATE_DEFAULT);
+  lv_obj_invalidate(flow_label);
+}
+
+void getFlow()
+{
+  static float lastWeightForFlow = currentWeight;
+  static unsigned long lastFlowTime = millis();
+
+  unsigned long currentTime = millis();
+  unsigned long timeDelta = currentTime - lastFlowTime;
+
+  if (timeDelta > 0) {
+    float weightDelta = currentWeight - lastWeightForFlow;
+    float flow = (weightDelta / (timeDelta / 1000.0f)); // grams per second
+    updateFlowDots(flow);
+    lastWeightForFlow = currentWeight;
+    lastFlowTime = currentTime;
+  }
 }
 
 // ============================
@@ -550,6 +629,23 @@ void setup()
   lv_obj_set_style_text_font(label_timer, &lv_font_montserrat_48, LV_PART_MAIN);
   lv_obj_align(label_timer, LV_ALIGN_LEFT_MID, 10, 0); // Align to the left
 
+  label_battery = lv_label_create(lv_scr_act());
+  lv_obj_set_style_text_font(label_battery, &lv_font_montserrat_28, LV_PART_MAIN);
+  lv_obj_align(label_battery, LV_ALIGN_TOP_RIGHT, -8, 6);
+  lv_label_set_text(label_battery, LV_SYMBOL_BATTERY_FULL);
+
+  flow_label = lv_label_create(lv_scr_act());   // Label for flow dots
+  lv_obj_set_width(flow_label, FLOW_WIDTH);
+  lv_obj_set_style_text_font(flow_label, &lv_font_montserrat_48, LV_PART_MAIN);
+  lv_obj_set_style_text_align(flow_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+  lv_label_set_long_mode(flow_label, LV_LABEL_LONG_CLIP);
+
+
+  lv_obj_align(flow_label, LV_ALIGN_BOTTOM_LEFT, 0, -4);
+
+ 
+  lv_label_set_text(flow_label, "");
+
   xTaskCreatePinnedToCore(
     startWifi, // Function to run on this task
     "startWifi", // Task name
@@ -577,6 +673,7 @@ void loop()
   // Read filtered weight
   currentWeight = medianFilter();
   sendBleWeight(); // Send weight via BLE notification
+  getFlow(); // Update flow dots based on weight change
 
   // Update the label with the current weight
   char weight_str[16];
@@ -683,6 +780,9 @@ void loop()
   if (millis() - lastBatteryCheck >= 60000 && !EspressiOtaBLE::IsActive() && !deviceConnected) { // Check every 1 minute
     batteryStatus = getBatteryVoltage(); // Update the battery status
     lastBatteryCheck = millis();
+    updateBatteryIcon(batteryStatus); // Update the battery icon on the display
+    Serial.print("Battery voltage: ");
+    Serial.println(batteryStatus);
   }
   
   if (batteryStatus < 3) // Check if battery voltage is below 3V
