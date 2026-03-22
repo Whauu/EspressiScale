@@ -685,12 +685,12 @@ void loop()
     TP_Point t = touch.getPoint(0);
     int16_t x = t.y; // Adjusted to match the screen orientation
 
-    if (x > screenWidth / 2)
+    if (x > screenWidth / 2 && !prevTouched)
     {
       timer_running = !timer_running; // Toggle timer state
       delay(100); // Debounce delay
     }
-    else
+    else if (x <= screenWidth / 2 && !prevTouched)
     {
       timer_running = false; // Stop the timer
       timer = 0; // Reset timer
@@ -712,19 +712,6 @@ void loop()
       );
       Serial.println("Tared and timer reset via touch");
     }
-  }
-
-  if (timer_running)
-  {
-    unsigned long current_time = millis();
-    if (current_time - last_update >= 1000) // Update every second
-    {
-      timer++;
-      last_update = current_time;
-    }
-  }
-
-  if (touch.read()) { //read touch
     if (!prevTouched) {
       touchStart = millis();
     }
@@ -742,9 +729,19 @@ void loop()
     }
 
     prevTouched = true;
-  } 
+  }
   else {
     prevTouched = false; // Reset touch state
+  }
+
+  if (timer_running)
+  {
+    unsigned long current_time = millis();
+    if (current_time - last_update >= 1000) // Update every second
+    {
+      timer++;
+      last_update = current_time;
+    }
   }
 
   // Update the label with the timer value
