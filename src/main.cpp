@@ -13,6 +13,7 @@
 #include <WiFi.hpp>
 #include "FT6336U.h"
 #include <TFT_GC9D01N.h>
+#include "driver/rtc_io.h"
 
 #define I2C_SDA       10
 #define I2C_SCL       11
@@ -164,11 +165,17 @@ void lv_port_disp_init(void)
 // Deep Sleep
 // ============================
 const gpio_num_t holdPins[] = {
+  GPIO_NUM_9,
+  GPIO_NUM_10,
+  GPIO_NUM_11,
+  GPIO_NUM_12,
+  GPIO_NUM_13,
   GPIO_NUM_14,
   GPIO_NUM_15,
   GPIO_NUM_16,
   GPIO_NUM_17,
-  GPIO_NUM_18
+  GPIO_NUM_18,
+  GPIO_NUM_48
 };
 
 static void deep_sleep()
@@ -179,6 +186,11 @@ static void deep_sleep()
     gpio_set_level(pin, 0);
     gpio_hold_en(pin);
   }
+  rtc_gpio_pullup_en(GPIO_NUM_12);
+  rtc_gpio_pulldown_dis(GPIO_NUM_12); // Make sure pull-down is disabled
+
+  esp_sleep_enable_ext1_wakeup(1ULL << 12, ESP_EXT1_WAKEUP_ANY_LOW);
+  delay(100); // Ensure all operations are completed before sleeping
   esp_deep_sleep_start();
 }
 
@@ -527,10 +539,8 @@ void setup()
   pinMode(LED_PIN, OUTPUT );
   digitalWrite(LED_PIN, HIGH);
 
-  pinMode(TOUCH_CE_PIN, OUTPUT);
-  digitalWrite(TOUCH_CE_PIN, HIGH);
-
-  esp_sleep_enable_ext0_wakeup(GPIO_NUM_12, 0); // Touch interrupt is connected to GPIO 12
+  /*pinMode(TOUCH_CE_PIN, OUTPUT);
+  digitalWrite(TOUCH_CE_PIN, HIGH);*/
 
   Serial.begin(921600);
   Serial.println("HX711 with median filter and exponential smoothing");
@@ -643,8 +653,9 @@ void loop()
   if (touched)
 {
   uint16_t x = tp.tp[0].x; // Adjusted to match the screen orientation
+  Serial.print(x > screenWidth/2 ? "Right" : "Left");
 
-  if (x > screenWidth / 2)
+  if (x > screenWidth/2)
   {
     timer_running = !timer_running; // Toggle timer state
     delay(100); // Debounce delay
