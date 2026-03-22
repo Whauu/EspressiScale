@@ -726,15 +726,15 @@ void loop()
   uint8_t touched = touch.getPoint(x, y, touch.getSupportTouchPoint());
   if (touched)
   {
-    softBeep(4000, 50, 80); // Beep on touch with 1800 Hz frequency, 20 ms duration, and max duty cycle of 60
-
-    if (x[0] < screenHeight / 2)
+    if (x[0] < screenHeight / 2 && !prevTouched)
     {
+      softBeep(4000, 50, 80); // Beep on touch with 1800 Hz frequency, 20 ms duration, and max duty cycle of 60
       timer_running = !timer_running; // Toggle timer state
       delay(100); // Debounce delay
     }
-    else if (x[0] >= screenHeight / 2)
+    else if (x[0] >= screenHeight / 2 && !prevTouched)
     {
+      softBeep(4000, 50, 80); // Beep on touch with 1800 Hz frequency, 20 ms duration, and max duty cycle of 60
       timer_running = false; // Stop the timer
       timer = 0; // Reset timer
       xTaskCreate( // To prevent halting the loop
@@ -755,19 +755,6 @@ void loop()
       );
       Serial.println("Tared and timer reset via touch");
     }
-  }
-
-  if (timer_running)
-  {
-    unsigned long current_time = millis();
-    if (current_time - last_update >= 1000) // Update every second
-    {
-      timer++;
-      last_update = current_time;
-    }
-  }
-
-  if (touched) { //read touch
     if (!prevTouched) {
       touchStart = millis();
     }
@@ -785,9 +772,19 @@ void loop()
     }
 
     prevTouched = true;
-  } 
+  }
   else {
     prevTouched = false; // Reset touch state
+  }
+
+  if (timer_running)
+  {
+    unsigned long current_time = millis();
+    if (current_time - last_update >= 1000) // Update every second
+    {
+      timer++;
+      last_update = current_time;
+    }
   }
 
   // Update the label with the timer value
