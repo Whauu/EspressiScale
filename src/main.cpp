@@ -34,11 +34,15 @@ uint16_t                    move_Y           = 0;
 #define LV_ROTATION                            1
 #define BUFFER_SIZE         (TFT_HEIGHT * 5)
 #define LV_SCREEN_COMPENSATION                 5
+#define BUZZER_PIN                             9
+#define BUZZER_CH                              0
+#define BUZZER_RES                             8
 static lv_disp_draw_buf_t   draw_buf;
 static lv_color_t          *buf1               [BUFFER_SIZE];
 static lv_color_t          *buf2               [BUFFER_SIZE];
 lv_obj_t                   *label_weight     = NULL;
 lv_obj_t                   *label_timer      = NULL;
+lv_obj_t                   *label_battery    = NULL;
 TFT_eSPI                    tft              = TFT_eSPI();
 TouchDrvCSTXXX              touch;
 int16_t                     x[5], y[5];
@@ -149,22 +153,58 @@ void lvgl_setRotation(int rotation)
 // Deep Sleep
 // ============================
 const gpio_num_t holdPins[] = {
+  GPIO_NUM_2,
+  GPIO_NUM_3,
+  GPIO_NUM_9,
+  GPIO_NUM_12,
+  GPIO_NUM_13,
   GPIO_NUM_14,
-  GPIO_NUM_15,
   GPIO_NUM_16,
   GPIO_NUM_17,
-  GPIO_NUM_18
+  GPIO_NUM_18,
 };
 
 static void deep_sleep()
 {
+  digitalWrite(15, LOW); // Ensure the display is off before sleeping
+  delay(100); // Short delay to allow the display to turn off
   for (auto pin : holdPins) {
     gpio_reset_pin(pin);
     gpio_set_direction(pin, GPIO_MODE_OUTPUT);
     gpio_set_level(pin, 0);
     gpio_hold_en(pin);
   }
+  gpio_deep_sleep_hold_en();
   esp_deep_sleep_start();
+}
+
+void softBeep(int freq, int holdMs, int maxDuty) {
+  ledcWriteTone(BUZZER_CH, freq);
+
+  for (int duty = 0; duty <= maxDuty; duty += 8) {
+    ledcWrite(BUZZER_CH, duty);
+    delay(2);
+  }
+
+  delay(holdMs);
+
+  for (int duty = maxDuty; duty >= 0; duty -= 8) {
+    ledcWrite(BUZZER_CH, duty);
+    delay(2);
+  }
+
+  ledcWrite(BUZZER_CH, 0);
+}
+
+void updateBatteryIcon()
+{
+  float pct = getBatteryPercentage();
+
+  if (pct >= 80)      lv_label_set_text(label_battery, LV_SYMBOL_BATTERY_FULL);
+  else if (pct >= 60) lv_label_set_text(label_battery, LV_SYMBOL_BATTERY_3);
+  else if (pct >= 40) lv_label_set_text(label_battery, LV_SYMBOL_BATTERY_2);
+  else if (pct >= 20) lv_label_set_text(label_battery, LV_SYMBOL_BATTERY_1);
+  else                lv_label_set_text(label_battery, LV_SYMBOL_BATTERY_EMPTY);
 }
 
 // ============================
@@ -505,14 +545,14 @@ void setupBLE(void * parameter) {
 
 void setup()
 {
-  /*for (auto pin : holdPins) {
+  for (auto pin : holdPins) {
     gpio_hold_dis(pin);
-  }*/
+  }
 
   touch.setPins(1, 21);
   touch.begin(Wire, CST816_SLAVE_ADDRESS, 3, 2);
 
-  esp_sleep_enable_ext0_wakeup(GPIO_NUM_38, 0); // Touch interrupt is connected to GPIO 12
+  esp_sleep_enable_ext0_wakeup(GPIO_NUM_21, 0); // Touch interrupt is connected to GPIO 21
 
   Serial.begin(115200);
   Serial.println("HX711 with median filter and exponential smoothing");
@@ -527,8 +567,9 @@ void setup()
   delay(2000); // Show the logo for 2 seconds
   lv_init();
 
-
-
+  ledcSetup(BUZZER_CH, 2000, BUZZER_RES);
+  ledcAttachPin(BUZZER_PIN, BUZZER_CH);
+  ledcWrite(BUZZER_CH, 0);
 
   lv_disp_draw_buf_init(&draw_buf, buf1, buf2, BUFFER_SIZE);
   /*Initialize the display*/
@@ -551,7 +592,7 @@ void setup()
   lv_indev_drv_register(&indev_drv);
 
   setupScale();
-  //setupBattery();
+  setupBattery();
   // Clear the display after showing the logo
 
   // Create a label to display the weight
@@ -563,6 +604,11 @@ void setup()
   label_timer = lv_label_create(lv_scr_act());
   lv_obj_set_style_text_font(label_timer, &lv_font_montserrat_36, LV_PART_MAIN);
   lv_obj_align(label_timer, LV_ALIGN_LEFT_MID, 10, 0); // Align to the left
+
+  label_battery = lv_label_create(lv_scr_act());
+  lv_obj_set_style_text_font(label_battery, &lv_font_montserrat_14, LV_PART_MAIN);
+  lv_obj_align(label_battery, LV_ALIGN_TOP_RIGHT, -8, 6);
+  lv_label_set_text(label_battery, LV_SYMBOL_BATTERY_FULL);
 
   xTaskCreatePinnedToCore(
     startWifi, // Function to run on this task
@@ -603,14 +649,14 @@ void loop()
   uint8_t touched = touch.getPoint(x, y, touch.getSupportTouchPoint());
   if (touched)
   {
-    
+    softBeep(4000, 50, 80); // Beep on touch with 1800 Hz frequency, 20 ms duration, and max duty cycle of 60
 
-    if (x[0] > screenWidth / 2)
+    if (x[0] < screenHeight / 2)
     {
       timer_running = !timer_running; // Toggle timer state
       delay(100); // Debounce delay
     }
-    else
+    else if (x[0] >= screenHeight / 2)
     {
       timer_running = false; // Stop the timer
       timer = 0; // Reset timer
@@ -699,8 +745,10 @@ void loop()
   if (millis() - lastBatteryCheck >= 60000 && !EspressiOtaBLE::IsActive() && !deviceConnected) { // Check every 1 minute
     batteryStatus = getBatteryVoltage(); // Update the battery status
     lastBatteryCheck = millis();
+    updateBatteryIcon(); // Update the battery icon on the display
   }
   
+  /*
   if (batteryStatus < 3) // Check if battery voltage is below 3V
   {
     Serial.println("Battery voltage is low. Entering deep sleep...");
@@ -708,5 +756,5 @@ void loop()
     lv_label_set_text(label_weight, "Low battery");
     delay(2000); // Wait for 2 seconds to show the message
     deep_sleep();
-  }
+  }*/
 }

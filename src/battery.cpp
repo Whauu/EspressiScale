@@ -1,26 +1,60 @@
 #include <Arduino.h>
 #include "esp_adc_cal.h"
-#define BAT_ADC    2
+#include <GaugeBQ27220.hpp>
+#ifndef SENSOR_SDA
+#define SENSOR_SDA 3
+#endif
 
-float voltage = 0.0;
+#ifndef SENSOR_SCL
+#define SENSOR_SCL 2
+#endif
+
 char voltage_String[10] = "";
-uint32_t readADC_Cal(int ADC_Raw);
+GaugeBQ27220 gauge;
+
+uint16_t newDesignCapacity = 3500;
+uint16_t newFullChargeCapacity = 3500;
 
 void setupBattery(){
-    pinMode(15, OUTPUT);
-    digitalWrite(15, HIGH);
+    if (!gauge.begin(Wire, SENSOR_SDA, SENSOR_SCL))
+    {
+        while (1)
+        {
+            Serial.println("Failed to BQ27220 - check your wiring!");
+
+            delay(1000);
+        }
+    }
+    Serial.println("Init BQ27220 Sensor success!");
+    gauge.setNewCapacity(newDesignCapacity, newFullChargeCapacity);
+
+    OperationConfig config = gauge.getOperationConfig();
 }
 
 float getBatteryVoltage(){
-    voltage = (readADC_Cal(analogRead(BAT_ADC)));
-    voltage = voltage * 0.002; // we use a voltage divider 1:1
-    return voltage;
+    if (gauge.refresh())
+    {
+        float voltage = gauge.getVoltage() / 1000.0; // Convert mV to V
+        Serial.print("Battery Voltage: ");
+        Serial.print(voltage);
+        return voltage;
+    }
+
+    return 0.0f; // Return 0 if refresh fails
 }
 
-uint32_t readADC_Cal(int ADC_Raw)
-{
-    esp_adc_cal_characteristics_t adc_chars;
+float getBatteryPercentage() {
+    if (gauge.refresh()) {
+        float percentage = ((float)gauge.getRemainingCapacity() / (float)newFullChargeCapacity) * 100.0f;
 
-    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_chars);
-    return (esp_adc_cal_raw_to_voltage(ADC_Raw, &adc_chars));
+        Serial.print("Remaining Capacity: ");
+        Serial.print(gauge.getRemainingCapacity());
+        Serial.print(" (");
+        Serial.print(percentage, 1);
+        Serial.println("%)");
+
+        return percentage;
+    }
+
+    return 0.0f;
 }
