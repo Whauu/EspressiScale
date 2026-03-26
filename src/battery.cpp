@@ -1,22 +1,26 @@
 #include <Arduino.h>
 #include "esp_adc_cal.h"
 #include <GaugeBQ27220.hpp>
-#ifndef SENSOR_SDA
-#define SENSOR_SDA 3
-#endif
-
-#ifndef SENSOR_SCL
-#define SENSOR_SCL 2
-#endif
+#include <XPowersLib.h>
+#define XPOWERS_CHIP_BQ25896
+#define BQ27220_ADDR 0x55
+#define I2C_SDA 3
+#define I2C_SCL 2
 
 char voltage_String[10] = "";
 GaugeBQ27220 gauge;
+PowersBQ25896 PPM;
 
-uint16_t newDesignCapacity = 3500;
-uint16_t newFullChargeCapacity = 3500;
+uint16_t newDesignCapacity = 400;
+uint16_t newFullChargeCapacity = 400;
+
+
+// ============================
+// Power Management
+// ============================
 
 void setupBattery(){
-    if (!gauge.begin(Wire, SENSOR_SDA, SENSOR_SCL))
+    if (!gauge.begin(Wire, I2C_SDA, I2C_SCL))
     {
         while (1)
         {
@@ -57,4 +61,32 @@ float getBatteryPercentage() {
     }
 
     return 0.0f;
+}
+
+void chargerInit()
+{
+  bool result = PPM.init(Wire, I2C_SDA, I2C_SCL, BQ25896_SLAVE_ADDRESS);
+  if (result == false)
+  {
+    Serial.println("PPM is not online...");
+  }
+  else
+  {
+    Serial.println("Init PPM success!");
+    PPM.setSysPowerDownVoltage(3200);
+    PPM.setChargeTargetVoltage(4208); // 3364mv
+    PPM.setPrechargeCurr(64);
+    PPM.setChargerConstantCurr(64);
+
+    if (PPM.getVbusVoltage() > 2800)
+    {
+      PPM.enableCharge();
+      Serial.println("USB connected, charging enabled.");
+    }
+    else
+    {
+      PPM.disableCharge();
+      Serial.println("USB not connected, charging disabled.");
+    }
+  }
 }

@@ -15,6 +15,7 @@
 #include <TouchDrvCSTXXX.hpp>
 #include "espressilogo.h"
 
+
 extern "C" {
   #include "esp_gatt_common_api.h"
 }
@@ -211,7 +212,6 @@ void getFlow()
     lastFlowTime = currentTime;
   }
 }
-
 
 // ============================
 // Deep Sleep
@@ -617,7 +617,7 @@ void setup()
   touch.begin(Wire, CST816_SLAVE_ADDRESS, 3, 2);
 
   esp_sleep_enable_ext0_wakeup(GPIO_NUM_21, 0); // Touch interrupt is connected to GPIO 21
-
+  chargerInit();
   Serial.begin(115200);
   Serial.println("HX711 with median filter and exponential smoothing");
 
@@ -762,8 +762,8 @@ void loop()
     // If touch is still held and >1000ms
     if (millis() - touchStart > 1000) {
       Serial.println("Long press detected");
-      lv_task_handler(); // Ensure LVGL updates the display
       lv_label_set_text(label_weight, "Deep Sleep");
+      lv_timer_handler(); // Ensure LVGL updates the display
       delay(2000); // Wait for 2 seconds to show the message
       if (!touch.getPoint(x, y, touch.getSupportTouchPoint())) {
         Serial.println("Entering deep sleep");
