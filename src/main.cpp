@@ -189,7 +189,6 @@ static void deep_sleep()
   rtc_gpio_pullup_en(GPIO_NUM_12);
   rtc_gpio_pulldown_dis(GPIO_NUM_12); // Make sure pull-down is disabled
 
-  esp_sleep_enable_ext1_wakeup(1ULL << 12, ESP_EXT1_WAKEUP_ANY_LOW);
   delay(100); // Ensure all operations are completed before sleeping
   esp_deep_sleep_start();
 }
