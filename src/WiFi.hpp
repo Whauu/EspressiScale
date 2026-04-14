@@ -11,18 +11,18 @@
 WiFiManager wifiManager;
 String header;
 
-const char* fs_URL = "https://raw.githubusercontent.com/Whauu/EspressiScale_web/main/webflash/littlefs.bin";
-const char* fs_beta_URL = "https://raw.githubusercontent.com/Whauu/EspressiScale_web/main/beta/littlefs.bin";
-const char* versionURL  = "https://raw.githubusercontent.com/Whauu/EspressiScale_web/main/webflash/version.txt";
-const char* versionBetaURL  = "https://raw.githubusercontent.com/Whauu/EspressiScale_web/main/beta/version.txt";
+const char* fs_URL = "https://raw.githubusercontent.com/Whauu/EspressiScale_web/main/lcd_flash/littlefs.bin";
+const char* fs_beta_URL = "https://raw.githubusercontent.com/Whauu/EspressiScale_web/main/lcd_beta/littlefs.bin";
+const char* versionURL  = "https://raw.githubusercontent.com/Whauu/EspressiScale_web/main/lcd_flash/version.txt";
+const char* versionBetaURL  = "https://raw.githubusercontent.com/Whauu/EspressiScale_web/main/lcd_beta/version.txt";
 const char* host = "raw.githubusercontent.com";
 const uint16_t port = 443;
-const char* uri  = "/Whauu/EspressiScale_web/main/webflash/firmware.bin";
-const char* beta_uri  = "/Whauu/EspressiScale_web/main/beta/firmware.bin";
+const char* uri  = "/Whauu/EspressiScale_web/main/lcd_flash/firmware.bin";
+const char* beta_uri  = "/Whauu/EspressiScale_web/main/lcd_beta/firmware.bin";
 
 #define pass "Espressi"
 #define DNS_ADDRESS "espressiscale"
-#define FW_VERSION "2.0.3"
+#define FW_VERSION "2.0.4"
 WebServer server(80);
 HTTPUpdateServer httpUpdater;
 
