@@ -5,50 +5,177 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>EspressiScale Calibration</title>
 <style>
+  :root {
+    --bg: #0f0f10;
+    --panel: #171719;
+    --panel-border: #2a2a2f;
+    --text: #f2eee7;
+    --muted: #b8b0a5;
+    --accent: #c8a26a;
+    --accent-hover: #d4b282;
+    --danger: #ff7b7b;
+    --radius: 18px;
+  }
+
+  * { box-sizing: border-box; }
+
   body {
-    font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-    margin:0;padding:0;display:flex;align-items:center;justify-content:center;min-height:100vh;
-    background:#f2f2f5;color:#1c1c1e;
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+      radial-gradient(circle at 20% 0%, rgba(200, 162, 106, 0.12), transparent 38%),
+      radial-gradient(circle at 95% 90%, rgba(200, 162, 106, 0.09), transparent 35%),
+      var(--bg);
+    color: var(--text);
+    font-family: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    padding: 1.5rem;
   }
+
   .card {
-    background:#fff;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.1);
-    padding:2rem;max-width:520px;width:90%;text-align:center;
+    width: min(560px, 100%);
+    background: linear-gradient(180deg, #1a1a1d 0%, #141416 100%);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+    padding: 2rem;
   }
-  h1 { font-size:1.75rem;margin-bottom:1rem;font-weight:600; }
+
+  .brand {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.78rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  h1 {
+    margin: 0.35rem 0 1rem;
+    font-size: 1.9rem;
+    line-height: 1.15;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+  }
+
   .msg {
-    text-align:left;background:#f8f8fa;border:1px solid #e5e5ea;border-radius:12px;
-    padding:1rem;line-height:1.45;font-size:.95rem;color:#3a3a3c;min-height:4.5rem;
-    white-space:pre-wrap;
+    text-align: left;
+    background: #111115;
+    border: 1px solid #2f2f36;
+    border-radius: 14px;
+    padding: 1rem;
+    line-height: 1.5;
+    font-size: 0.95rem;
+    color: var(--text);
+    min-height: 4.5rem;
+    white-space: pre-wrap;
   }
+
   .btn {
-    display:inline-flex;align-items:center;justify-content:center;width:100%;
-    padding:.75rem 1.5rem;font-size:1rem;font-weight:500;color:#fff;background:#007aff;
-    border:0;border-radius:24px;box-shadow:0 4px 12px rgba(0,122,255,.3);
-    cursor:pointer;transition:background-color .2s, box-shadow .2s;margin-top:1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #111;
+    padding: 0.8rem 1.15rem;
+    font-size: 0.97rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: 0 8px 20px rgba(200, 162, 106, 0.22);
+    margin-top: 1rem;
   }
-  .btn:hover { background:#005bb5;box-shadow:0 6px 16px rgba(0,91,181,.3); }
-  .btn:disabled { background:#b0b0b5;box-shadow:none;cursor:default; }
-  .note { font-size:.875rem;color:#6e6e73;margin-top:.75rem; }
-  .err { color:#ff3b30; }
-  .row { display:flex;gap:.5rem;justify-content:center;margin-top:1rem; }
-  .linkbtn { background:transparent;color:#007aff;border:none;cursor:pointer;padding:.25rem .5rem;font-size:.95rem;border-radius:8px; }
-  .linkbtn:hover { text-decoration:underline; }
+
+  .btn:hover {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+  }
+
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .note {
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin-top: 0.7rem;
+  }
+
+  .err { color: var(--danger); }
+
+  .inline {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-top: 1.4rem;
+  }
+
+  label {
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  select {
+    width: 100%;
+    border-radius: 999px;
+    border: 1px solid #3a3942;
+    background: #101012;
+    color: var(--text);
+    padding: 0.65rem 0.9rem;
+    font-size: 0.95rem;
+    outline: none;
+  }
+
+  .row {
+    display: flex;
+    justify-content: center;
+    margin-top: 0.9rem;
+  }
+
+  .linkbtn {
+    background: transparent;
+    color: var(--muted);
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.93rem;
+    border-radius: 8px;
+  }
+
+  .linkbtn:hover {
+    color: var(--text);
+  }
 </style>
 </head>
 <body>
   <div class="card">
+    <p class="brand">EspressiScale</p>
     <h1>Calibration</h1>
 
     <div id="dialog" class="msg">Press <em>Calibrate</em> to begin.</div>
 
     <button id="actionBtn" class="btn">Calibrate</button>
     <div id="status" class="note"></div>
-    <label for="referenceSelect" class="note" style="margin-top:1.5rem;">Reference weight:</label>
-    <select id="referenceSelect">
-      <option value="50">50</option>
-      <option value="100">100</option>
-      <option value="200">200</option>
-    </select>
+
+    <div class="inline">
+      <label for="referenceSelect">Reference weight</label>
+      <select id="referenceSelect">
+        <option value="50">50</option>
+        <option value="100">100</option>
+        <option value="200">200</option>
+      </select>
+    </div>
 
     <div class="row">
       <button class="linkbtn" onclick="location.href='/'">← Back to Home</button>
@@ -56,11 +183,11 @@
   </div>
 
 <script>
-  const dialog  = document.getElementById('dialog');
+  const dialog = document.getElementById('dialog');
   const statusE = document.getElementById('status');
-  const btn     = document.getElementById('actionBtn');
+  const btn = document.getElementById('actionBtn');
+  const referenceSelect = document.getElementById('referenceSelect');
 
-  // 0 = initial, 1 = "Clear the scale", 2 = "Place 100g", 3 = starting calibration, 4 = complete
   let phase = 0;
 
   function setDialog(text) { dialog.textContent = text || ''; }
@@ -78,10 +205,8 @@
     if (val === '50' || val === '100' || val === '200') {
       return val;
     }
-    else {
-      return '100'; // default
-    }
-}
+    return '100';
+  }
 
   function render() {
     switch (phase) {
@@ -116,42 +241,52 @@
     setBtn('Taring…', true);
     setStatus('');
     try {
-      const res = await fetch('/doTare');      // Send tare request
+      const res = await fetch('/doTare');
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      phase = 2;                               // move to "Place 100g"
+      phase = 2;
       render();
     } catch (e) {
       setStatus('Tare failed: ' + e.message, true);
-      setBtn('Continue', false);               // allow retry
+      setBtn('Continue', false);
     }
   }
 
   async function callDoCalibration() {
-    phase = 3; render();                       // show starting state
+    phase = 3;
+    render();
     setStatus('');
     const suffix = getSuffix();
     try {
-      const res = await fetch(`/doCalibration${suffix}`); // Send calibration request
+      const res = await fetch(`/doCalibration${suffix}`);
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      // Success → show complete + Done button
-      phase = 4; render();
+      phase = 4;
+      render();
     } catch (e) {
       setStatus('Calibration failed: ' + e.message, true);
-      phase = 2;                                // back to Start calibration
+      phase = 2;
       setBtn('Start calibration', false);
     }
   }
 
   btn.addEventListener('click', () => {
     switch (phase) {
-      case 0: phase = 1; render(); break;          // show "Clear the scale"
-      case 1: callDoTare(); break;                 // calls /doTare, then shows "Place 100g"
-      case 2: callDoCalibration(); break;          // calls /docalibration
-      case 4: window.location.href = '/'; break;   // Done → home
+      case 0:
+        phase = 1;
+        render();
+        break;
+      case 1:
+        callDoTare();
+        break;
+      case 2:
+        callDoCalibration();
+        break;
+      case 4:
+        window.location.href = '/';
+        break;
     }
   });
 
-  render(); // initial
+  render();
 </script>
 </body>
 </html>

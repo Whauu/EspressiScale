@@ -5,81 +5,187 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>EspressiScale OTA</title>
   <style>
+    :root {
+      --bg: #0f0f10;
+      --panel: #171719;
+      --panel-border: #2a2a2f;
+      --text: #f2eee7;
+      --muted: #b8b0a5;
+      --accent: #c8a26a;
+      --accent-hover: #d4b282;
+      --danger: #ff7b7b;
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      margin: 0; padding: 0;
-      display: flex; align-items: center; justify-content: center;
+      margin: 0;
       min-height: 100vh;
-      background-color: #f2f2f5;
-      color: #1c1c1e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(circle at 20% 0%, rgba(200, 162, 106, 0.12), transparent 38%),
+        radial-gradient(circle at 95% 90%, rgba(200, 162, 106, 0.09), transparent 35%),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      padding: 1.5rem;
     }
+
     .card {
-      background-color: #fff;
-      border-radius: 16px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+      width: min(460px, 100%);
+      background: linear-gradient(180deg, #1a1a1d 0%, #141416 100%);
+      border: 1px solid var(--panel-border);
+      border-radius: var(--radius);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
       padding: 2rem;
-      text-align: center;
-      max-width: 400px; width: 90%;
     }
+
+    .brand {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.78rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
     h1 {
-      font-size: 1.75rem; margin-bottom: 1.5rem; font-weight: 600;
+      margin: 0.35rem 0 1.5rem;
+      font-size: 1.9rem;
+      line-height: 1.15;
+      font-weight: 650;
+      letter-spacing: -0.02em;
     }
+
+    .controls {
+      display: grid;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
     .btn {
-      display: inline-flex; align-items: center; justify-content: center;
-      padding: 0.75rem 1.5rem; font-size: 1rem; font-weight: 500;
-      color: #fff; background-color: #007aff;
-      border: none; border-radius: 24px;
-      box-shadow: 0 4px 12px rgba(0,122,255,0.3);
-      cursor: pointer; transition: background-color .2s, box-shadow .2s;
-      margin: 0.5rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #111;
+      padding: 0.8rem 1.15rem;
+      font-size: 0.97rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: 0 8px 20px rgba(200, 162, 106, 0.22);
     }
+
     .btn:hover {
-      background-color: #005bb5;
-      box-shadow: 0 6px 16px rgba(0,91,181,0.3);
+      background: var(--accent-hover);
+      transform: translateY(-1px);
     }
+
     .btn:disabled {
-      background-color: #b0b0b5;
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
       box-shadow: none;
-      cursor: default;
     }
+
+    .btn.ghost {
+      background: transparent;
+      color: var(--text);
+      border-color: #44434c;
+      box-shadow: none;
+    }
+
+    .btn.ghost:hover {
+      background: #232328;
+    }
+
     .note {
-      font-size: 0.875rem; color: #6e6e73; margin-top: 1rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin: 0.75rem 0 0;
     }
+
     .error {
-      font-size: 1rem; color: #ff3b30;
+      color: var(--danger);
     }
+
+    .inline {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      margin-top: 1.4rem;
+    }
+
+    label {
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
     select {
-      margin-top: 0.5rem;
-      padding: 0.5rem;
-      font-size: 1rem;
-      border-radius: 8px;
-      border: 1px solid #ccc;
+      width: 100%;
+      border-radius: 999px;
+      border: 1px solid #3a3942;
+      background: #101012;
+      color: var(--text);
+      padding: 0.65rem 0.9rem;
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    #updateSection {
+      margin-top: 1rem;
+      border-radius: 14px;
+      border: 1px solid #3b3125;
+      background: rgba(200, 162, 106, 0.09);
+      padding: 0.9rem;
+    }
+
+    #updateSection p {
+      margin: 0 0 0.75rem;
+      color: #f0dcc0;
     }
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>EspressiScale OTA</h1>
+    <p class="brand">EspressiScale</p>
+    <h1>OTA Firmware</h1>
+
     <p class="note" id="versionText">Version: Loading...</p>
-    <!-- Buttons -->
-    <button id="checkBtn" class="btn">Check for update</button>
-    <button id="forceBtn" class="btn">Force update</button>
-    <button class="btn" onclick="window.location.href='/calibrate'">Calibration</button>
-    <div id="updateSection" style="display:none; margin-top:1rem;">
+
+    <div class="controls">
+      <button id="checkBtn" class="btn">Check for update</button>
+      <button id="forceBtn" class="btn ghost">Force update</button>
+      <button class="btn ghost" onclick="window.location.href='/calibrate'">Calibration</button>
+    </div>
+
+    <div id="updateSection" style="display:none;">
       <p>New version available: <strong id="newVersion"></strong></p>
       <button id="updateBtn" class="btn">Update now</button>
     </div>
+
     <div id="message" class="note"></div>
-    <!-- Dropdown menu for release channel -->
-    <label for="channelSelect" class="note" style="margin-top:1.5rem;">Channel:</label>
-    <select id="channelSelect">
-      <option value="stable">Stable</option>
-      <option value="beta">Beta</option>
-    </select>
+
+    <div class="inline">
+      <label for="channelSelect">Release channel</label>
+      <select id="channelSelect">
+        <option value="stable">Stable</option>
+        <option value="beta">Beta</option>
+      </select>
+    </div>
   </div>
 
   <script>
-    // Script for comparing version strings
     function compareVersions(v1, v2) {
       const a = v1.split('.').map(n => parseInt(n, 10));
       const b = v2.split('.').map(n => parseInt(n, 10));
@@ -93,7 +199,6 @@
       return 0;
     }
 
-    // Load firmware version and store globally
     fetch('/getFW')
       .then(r => r.text())
       .then(v => {
@@ -106,12 +211,12 @@
       });
 
     const channelSelect = document.getElementById('channelSelect');
-    const checkBtn      = document.getElementById('checkBtn');
-    const forceBtn      = document.getElementById('forceBtn');
-    const updateBtn     = document.getElementById('updateBtn');
-    const updateSect    = document.getElementById('updateSection');
-    const newVerEl      = document.getElementById('newVersion');
-    const messageEl     = document.getElementById('message');
+    const checkBtn = document.getElementById('checkBtn');
+    const forceBtn = document.getElementById('forceBtn');
+    const updateBtn = document.getElementById('updateBtn');
+    const updateSect = document.getElementById('updateSection');
+    const newVerEl = document.getElementById('newVersion');
+    const messageEl = document.getElementById('message');
 
     function getSuffix() {
       return channelSelect.value === 'beta' ? 'Beta' : '';
