@@ -5,24 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>EspressiScale Calibration</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap');
-
-  @font-face {
-    font-family: "ALPENKREUZER";
-    src: local("ALPENKREUZER"), local("Alpenkreuzer");
-    font-display: swap;
-  }
-
   :root {
-    --bg: #f7f4ef;
-    --panel: #ffffff;
-    --panel-border: #eadfd3;
-    --text: #2f2922;
-    --muted: #8b7f73;
-    --accent: #D95B29;
-    --accent-hover: #bf4c1e;
-    --danger: #d7263d;
-    --radius: 20px;
+    --bg: #0f0f10;
+    --panel: #171719;
+    --panel-border: #2a2a2f;
+    --text: #f2eee7;
+    --muted: #b8b0a5;
+    --accent: #c8a26a;
+    --accent-hover: #d4b282;
+    --danger: #ff7b7b;
+    --radius: 18px;
   }
 
   * { box-sizing: border-box; }
@@ -33,42 +25,45 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(180deg, #fefcf9 0%, #f7f4ef 100%);
+    background:
+      radial-gradient(circle at 20% 0%, rgba(200, 162, 106, 0.12), transparent 38%),
+      radial-gradient(circle at 95% 90%, rgba(200, 162, 106, 0.09), transparent 35%),
+      var(--bg);
     color: var(--text);
-    font-family: "Lato", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     padding: 1.5rem;
   }
 
   .card {
     width: min(560px, 100%);
-    background: var(--panel);
+    background: linear-gradient(180deg, #1a1a1d 0%, #141416 100%);
     border: 1px solid var(--panel-border);
     border-radius: var(--radius);
-    box-shadow: 0 18px 40px rgba(73, 51, 29, 0.1);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
     padding: 2rem;
   }
 
   .brand {
     margin: 0;
-    color: var(--accent);
-    font-family: "ALPENKREUZER", "Lato", sans-serif;
-    font-size: 2rem;
-    letter-spacing: 0.02em;
-    line-height: 1;
+    color: var(--muted);
+    font-size: 0.78rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    font-weight: 600;
   }
 
   h1 {
-    margin: 0.65rem 0 1rem;
-    font-size: 1.7rem;
+    margin: 0.35rem 0 1rem;
+    font-size: 1.9rem;
     line-height: 1.15;
-    font-weight: 700;
+    font-weight: 650;
     letter-spacing: -0.02em;
   }
 
   .msg {
     text-align: left;
-    background: #fff8f5;
-    border: 1px solid #f1c7b5;
+    background: #111115;
+    border: 1px solid #2f2f36;
     border-radius: 14px;
     padding: 1rem;
     line-height: 1.5;
@@ -86,13 +81,13 @@
     border: 1px solid transparent;
     border-radius: 999px;
     background: var(--accent);
-    color: #fff;
+    color: #111;
     padding: 0.8rem 1.15rem;
     font-size: 0.97rem;
-    font-weight: 700;
+    font-weight: 600;
     cursor: pointer;
     transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
-    box-shadow: 0 8px 20px rgba(217, 91, 41, 0.25);
+    box-shadow: 0 8px 20px rgba(200, 162, 106, 0.22);
     margin-top: 1rem;
   }
 
@@ -134,8 +129,8 @@
   select {
     width: 100%;
     border-radius: 999px;
-    border: 1px solid #d9cbbb;
-    background: #fff;
+    border: 1px solid #3a3942;
+    background: #101012;
     color: var(--text);
     padding: 0.65rem 0.9rem;
     font-size: 0.95rem;
@@ -150,7 +145,7 @@
 
   .linkbtn {
     background: transparent;
-    color: #8f3b1b;
+    color: var(--muted);
     border: none;
     cursor: pointer;
     padding: 0.25rem 0.5rem;
@@ -159,15 +154,13 @@
   }
 
   .linkbtn:hover {
-    color: var(--accent);
+    color: var(--text);
   }
 </style>
 </head>
 <body>
   <div class="card">
-    <p class="brand">
-      <img src="/espressiscale-logo.svg" alt="EspressiScale logo">
-    </p>
+    <p class="brand">EspressiScale</p>
     <h1>Calibration</h1>
 
     <div id="dialog" class="msg">Press <em>Calibrate</em> to begin.</div>
