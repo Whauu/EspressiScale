@@ -5,16 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>EspressiScale OTA</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap');
+
     :root {
-      --bg: #0f0f10;
-      --panel: #171719;
-      --panel-border: #2a2a2f;
-      --text: #f2eee7;
-      --muted: #b8b0a5;
-      --accent: #c8a26a;
-      --accent-hover: #d4b282;
-      --danger: #ff7b7b;
-      --radius: 18px;
+      --bg: #f7f4ef;
+      --panel: #ffffff;
+      --panel-border: #eadfd3;
+      --text: #2f2922;
+      --muted: #8b7f73;
+      --accent: #D95B29;
+      --accent-hover: #bf4c1e;
+      --danger: #d7263d;
+      --radius: 20px;
     }
 
     * { box-sizing: border-box; }
@@ -25,38 +27,39 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background:
-        radial-gradient(circle at 20% 0%, rgba(200, 162, 106, 0.12), transparent 38%),
-        radial-gradient(circle at 95% 90%, rgba(200, 162, 106, 0.09), transparent 35%),
-        var(--bg);
+      background: linear-gradient(180deg, #fefcf9 0%, #f7f4ef 100%);
       color: var(--text);
-      font-family: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: "Lato", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       padding: 1.5rem;
     }
 
     .card {
       width: min(460px, 100%);
-      background: linear-gradient(180deg, #1a1a1d 0%, #141416 100%);
+      background: var(--panel);
       border: 1px solid var(--panel-border);
       border-radius: var(--radius);
-      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+      box-shadow: 0 18px 40px rgba(73, 51, 29, 0.1);
       padding: 2rem;
     }
 
     .brand {
-      margin: 0;
-      color: var(--muted);
-      font-size: 0.78rem;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      font-weight: 600;
+      margin: 0 0 0.65rem;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .brand img {
+      display: block;
+      width: min(320px, 100%);
+      height: auto;
+      border-radius: 6px;
     }
 
     h1 {
-      margin: 0.35rem 0 1.5rem;
-      font-size: 1.9rem;
+      margin: 0 0 1.5rem;
+      font-size: 1.7rem;
       line-height: 1.15;
-      font-weight: 650;
+      font-weight: 700;
       letter-spacing: -0.02em;
     }
 
@@ -74,13 +77,13 @@
       border: 1px solid transparent;
       border-radius: 999px;
       background: var(--accent);
-      color: #111;
+      color: #fff;
       padding: 0.8rem 1.15rem;
       font-size: 0.97rem;
-      font-weight: 600;
+      font-weight: 700;
       cursor: pointer;
       transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
-      box-shadow: 0 8px 20px rgba(200, 162, 106, 0.22);
+      box-shadow: 0 8px 20px rgba(217, 91, 41, 0.25);
     }
 
     .btn:hover {
@@ -98,12 +101,12 @@
     .btn.ghost {
       background: transparent;
       color: var(--text);
-      border-color: #44434c;
+      border-color: #d9cbbb;
       box-shadow: none;
     }
 
     .btn.ghost:hover {
-      background: #232328;
+      background: #fff5f0;
     }
 
     .note {
@@ -134,8 +137,8 @@
     select {
       width: 100%;
       border-radius: 999px;
-      border: 1px solid #3a3942;
-      background: #101012;
+      border: 1px solid #d9cbbb;
+      background: #fff;
       color: var(--text);
       padding: 0.65rem 0.9rem;
       font-size: 0.95rem;
@@ -145,20 +148,22 @@
     #updateSection {
       margin-top: 1rem;
       border-radius: 14px;
-      border: 1px solid #3b3125;
-      background: rgba(200, 162, 106, 0.09);
+      border: 1px solid #f1c7b5;
+      background: #fff6f2;
       padding: 0.9rem;
     }
 
     #updateSection p {
       margin: 0 0 0.75rem;
-      color: #f0dcc0;
+      color: #9c401e;
     }
   </style>
 </head>
 <body>
   <div class="card">
-    <p class="brand">EspressiScale</p>
+    <p class="brand">
+      <img src="/espressiscale-logo.svg" alt="EspressiScale logo">
+    </p>
     <h1>OTA Firmware</h1>
 
     <p class="note" id="versionText">Version: Loading...</p>
