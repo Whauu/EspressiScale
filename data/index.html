@@ -7,6 +7,12 @@
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap');
 
+    @font-face {
+      font-family: "ALPENKREUZER";
+      src: local("ALPENKREUZER"), local("Alpenkreuzer");
+      font-display: swap;
+    }
+
     :root {
       --bg: #f7f4ef;
       --panel: #ffffff;
@@ -43,20 +49,16 @@
     }
 
     .brand {
-      margin: 0 0 0.65rem;
-      display: inline-flex;
-      align-items: center;
-    }
-
-    .brand img {
-      display: block;
-      width: min(320px, 100%);
-      height: auto;
-      border-radius: 6px;
+      margin: 0;
+      color: var(--accent);
+      font-family: "ALPENKREUZER", "Lato", sans-serif;
+      font-size: 2rem;
+      letter-spacing: 0.02em;
+      line-height: 1;
     }
 
     h1 {
-      margin: 0 0 1.5rem;
+      margin: 0.65rem 0 1.5rem;
       font-size: 1.7rem;
       line-height: 1.15;
       font-weight: 700;
