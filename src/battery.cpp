@@ -12,9 +12,9 @@ void setupBattery(){
 }
 
 float getBatteryVoltage(){
-    voltage = (readADC_Cal(analogRead(BAT_ADC))) * 2 / 1000;
+    voltage = (readADC_Cal(analogRead(BAT_ADC)));
+    voltage = voltage * 0.002; // we use a voltage divider 1:1
     return voltage;
-    delay(60000); // Delay for 1 minute
 }
 
 uint32_t readADC_Cal(int ADC_Raw)

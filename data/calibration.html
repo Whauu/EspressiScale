@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>EspressiScale Calibration</title>
+<link rel="stylesheet" href="https://fonts.cdnfonts.com/css/alpenkreuzer">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f10;
+    --panel: #171719;
+    --panel-border: #2a2a2f;
+    --text: #f2eee7;
+    --muted: #b8b0a5;
+    --accent: #D95B29;
+    --accent-hover: #d4b282;
+    --danger: #ff7b7b;
+    --radius: 18px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+      radial-gradient(circle at 20% 0%, rgba(200, 162, 106, 0.12), transparent 38%),
+      radial-gradient(circle at 95% 90%, rgba(200, 162, 106, 0.09), transparent 35%),
+      var(--bg);
+    color: var(--text);
+    font-family: "Lato", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    padding: 1.5rem;
+  }
+
+  .card {
+    width: min(560px, 100%);
+    background: linear-gradient(180deg, #1a1a1d 0%, #141416 100%);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+    padding: 2rem;
+  }
+
+  .brand {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.85rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    font-weight: 600;
+    font-family: "Alpenkreuzer", "Lato", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  h1 {
+    margin: 0.35rem 0 1rem;
+    font-size: 3rem;
+    line-height: 1.15;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+  }
+
+  .msg {
+    text-align: left;
+    background: #111115;
+    border: 1px solid #2f2f36;
+    border-radius: 14px;
+    padding: 1rem;
+    line-height: 1.5;
+    font-size: 0.95rem;
+    color: var(--text);
+    min-height: 4.5rem;
+    white-space: pre-wrap;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #111;
+    padding: 0.8rem 1.15rem;
+    font-size: 0.97rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: 0 8px 20px rgba(200, 162, 106, 0.22);
+    margin-top: 1rem;
+  }
+
+  .btn:hover {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+  }
+
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .note {
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin-top: 0.7rem;
+  }
+
+  .err { color: var(--danger); }
+
+  .inline {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-top: 1.4rem;
+  }
+
+  label {
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  select {
+    width: 100%;
+    border-radius: 999px;
+    border: 1px solid #3a3942;
+    background: #101012;
+    color: var(--text);
+    padding: 0.65rem 0.9rem;
+    font-size: 0.95rem;
+    outline: none;
+  }
+
+  .row {
+    display: flex;
+    justify-content: center;
+    margin-top: 0.9rem;
+  }
+
+  .linkbtn {
+    background: transparent;
+    color: var(--muted);
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.93rem;
+    border-radius: 8px;
+  }
+
+  .linkbtn:hover {
+    color: var(--text);
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <p class="brand">EspressiScale</p>
+    <h1>Calibration</h1>
+
+    <div id="dialog" class="msg">Press <em>Calibrate</em> to begin.</div>
+
+    <button id="actionBtn" class="btn">Calibrate</button>
+    <div id="status" class="note"></div>
+
+    <div class="inline">
+      <label for="referenceSelect">Reference weight</label>
+      <select id="referenceSelect">
+        <option value="50">50</option>
+        <option value="100">100</option>
+        <option value="200">200</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <button class="linkbtn" onclick="location.href='/'">← Back to Home</button>
+    </div>
+  </div>
+
+<script>
+  const dialog = document.getElementById('dialog');
+  const statusE = document.getElementById('status');
+  const btn = document.getElementById('actionBtn');
+  const referenceSelect = document.getElementById('referenceSelect');
+
+  let phase = 0;
+
+  function setDialog(text) { dialog.textContent = text || ''; }
+  function setStatus(text, isError=false) {
+    statusE.textContent = text || '';
+    statusE.className = 'note' + (isError ? ' err' : '');
+  }
+  function setBtn(label, disabled=false) {
+    btn.textContent = label;
+    btn.disabled = disabled;
+  }
+
+  function getSuffix() {
+    const val = referenceSelect.value;
+    if (val === '50' || val === '100' || val === '200') {
+      return val;
+    }
+    return '100';
+  }
+
+  function render() {
+    switch (phase) {
+      case 0:
+        setDialog('Press Calibrate to begin.');
+        setBtn('Calibrate', false);
+        setStatus('');
+        break;
+      case 1:
+        setDialog('Clear the scale');
+        setBtn('Continue', false);
+        setStatus('');
+        break;
+      case 2:
+        setDialog(`Place a ${getSuffix()} reference weight`);
+        setBtn('Start calibration', false);
+        setStatus('');
+        break;
+      case 3:
+        setDialog('Calibrating… Please wait.');
+        setBtn('Calibrating…', true);
+        break;
+      case 4:
+        setDialog('Calibration complete');
+        setBtn('Done', false);
+        setStatus('');
+        break;
+    }
+  }
+
+  async function callDoTare() {
+    setBtn('Taring…', true);
+    setStatus('');
+    try {
+      const res = await fetch('/doTare');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      phase = 2;
+      render();
+    } catch (e) {
+      setStatus('Tare failed: ' + e.message, true);
+      setBtn('Continue', false);
+    }
+  }
+
+  async function callDoCalibration() {
+    phase = 3;
+    render();
+    setStatus('');
+    const suffix = getSuffix();
+    try {
+      const res = await fetch(`/doCalibration${suffix}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      phase = 4;
+      render();
+    } catch (e) {
+      setStatus('Calibration failed: ' + e.message, true);
+      phase = 2;
+      setBtn('Start calibration', false);
+    }
+  }
+
+  btn.addEventListener('click', () => {
+    switch (phase) {
+      case 0:
+        phase = 1;
+        render();
+        break;
+      case 1:
+        callDoTare();
+        break;
+      case 2:
+        callDoCalibration();
+        break;
+      case 4:
+        window.location.href = '/';
+        break;
+    }
+  });
+
+  render();
+</script>
+</body>
+</html>
