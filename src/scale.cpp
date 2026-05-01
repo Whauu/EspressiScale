@@ -1,137 +1,111 @@
-#include <HX711.h>
+#include "scale.h"
+#include "IScaleDriver.h"
+
 #include <Arduino.h>
 #include <EEPROM.h>
+#include <math.h>
 
-#define LOADCELL_DOUT_PIN  4
-#define LOADCELL_SCK_PIN   3
-#define LOADCELL_POWER_PIN 6
+#if defined(SCALE_USE_HX711)
+#include "HX711Driver.h"
+#elif defined(SCALE_USE_ADS1232)
+#include "ADS1232Driver.h"
+#else
+#error "No scale driver selected. Define SCALE_USE_HX711 or SCALE_USE_ADS1232 in platformio.ini"
+#endif
 
-float calibration_factor = 1; // Default value
-const int CALIBRATION_FACTOR_ADDR = 0; // EEPROM address
-bool isCalibrating = false;
+static constexpr int EEPROM_SIZE = 512;
+static constexpr int EEPROM_ADDR_OFFSET = 0;
 
-HX711 scale;
+// HX711 pins
+static constexpr int HX711_DOUT_PIN = 4;
+static constexpr int HX711_SCK_PIN = 5;
 
-void setupScale(){
-  EEPROM.begin(512);
-  EEPROM.get(CALIBRATION_FACTOR_ADDR, calibration_factor);
-  if (isnan(calibration_factor) || calibration_factor == 0) {
-    calibration_factor = 1; // Reset to default if invalid
-  }
-  pinMode(LOADCELL_POWER_PIN, OUTPUT);
-  digitalWrite(LOADCELL_POWER_PIN, HIGH);
-  scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
-  scale.set_gain();
-  scale.set_scale(calibration_factor);
-  scale.tare(); 
+// ADS1232 pins
+static constexpr int ADS1232_DOUT_PIN = 5;
+static constexpr int ADS1232_SCK_PIN = 7;
+static constexpr int ADS1232_PDWN_PIN = 8;
+static constexpr int ADS1232_SPEED_PIN = 4;
+
+static IScaleDriver* scaleDriver = nullptr;
+
+static void loadScaleSettings() {
+    float storedFactor = 0.0f;
+    EEPROM.get(EEPROM_ADDR_OFFSET, storedFactor);
+
+    if (!isnan(storedFactor)) {
+        scaleDriver->setFactor(storedFactor);
+    }
 }
 
-float getOffset(){
-  return scale.get_offset();
-}
-
-bool setOffset(float newOffset){
-  scale.set_offset(newOffset);
-  return true;
-}
-
-bool tareScale(){
-  //delay(500);
-  int times = 20;
-	long sum = 0;
-  long lastSum = 0;
-  bool finished = false;
-  int stableCounter = 0;
-
-	for (byte i = 0; i < times && !finished; i++) {
-		sum = scale.read();
-    if (sum == lastSum) {
-      stableCounter++;
-      if (stableCounter >= 2) {
-        finished = true;
-      }
-    }
-    else {
-      stableCounter = 0;
-    }
-    lastSum = sum;
-    scale.set_offset(sum); // Set the scale to 0.0
-		delay(0);
-	}
-  finished = true;
-  return finished;
-}
-
-float updateScale(){
-  return scale.get_units();
-}
-
-bool doCalibration(int referenceWeight){
-    bool finished = false;
-    float calibration_factors[5];
-    float measured_values[5];
-    if (referenceWeight <= 0) {
-      referenceWeight = 100; // Default to 100g if invalid
-    }
-
-    for (int trial = 0; trial < 5; ++trial) {
-      // Reset calibration factor to 1 before each trial
-      calibration_factor = 1;
-      scale.set_scale(calibration_factor);
-
-      float measured = scale.get_units(2);
-      Serial.print("Trial ");
-      Serial.print(trial + 1);
-      Serial.print(": measured value = ");
-      Serial.println(measured, 4);
-
-      // Calibration loop: adjust calibration_factor so measured == 100
-      Serial.println("Calibrating...");
-      float tolerance = 0.05;
-      int max_iterations = 1000;
-      int iter = 0;
-      float trial_calibration_factor = calibration_factor;
-
-      while (abs(measured - referenceWeight) > tolerance && iter < max_iterations) {
-        trial_calibration_factor *= (measured / referenceWeight); // Adjust factor proportionally
-        scale.set_scale(trial_calibration_factor);
-        measured = scale.get_units(2);
-        iter++;
-      }
-
-      calibration_factors[trial] = trial_calibration_factor;
-      measured_values[trial] = measured;
-
-      Serial.print("Trial ");
-      Serial.print(trial + 1);
-      Serial.print(" calibration factor: ");
-      Serial.println(trial_calibration_factor, 6);
-      Serial.print("Trial ");
-      Serial.print(trial + 1);
-      Serial.print(" measured value: ");
-      Serial.println(measured, 4);
-
-      delay(1000); // Short delay between trials
-    }
-
-    // Calculate average calibration factor and measured value
-    float sum_factor = 0;
-    float sum_measured = 0;
-    for (int i = 0; i < 5; ++i) {
-      sum_factor += calibration_factors[i];
-      sum_measured += measured_values[i];
-    }
-    float avg_factor = sum_factor / 5.0;
-    float avg_measured = sum_measured / 5.0;
-
-    Serial.println("Calibration complete.");
-    Serial.print("Your calibration factor: ");
-    Serial.println(avg_factor, 4);
-
-    calibration_factor = avg_factor;
-    EEPROM.put(CALIBRATION_FACTOR_ADDR, calibration_factor);
+static void saveScaleSettings() {
+    EEPROM.put(EEPROM_ADDR_OFFSET, scaleDriver->getFactor());
     EEPROM.commit();
-    scale.set_scale(calibration_factor);
-    finished = true;
-    return finished;
+}
+
+void setupScale() {
+    EEPROM.begin(EEPROM_SIZE);
+
+#if defined(SCALE_USE_HX711)
+    scaleDriver = new HX711Driver(HX711_DOUT_PIN, HX711_SCK_PIN);
+#elif defined(SCALE_USE_ADS1232)
+    scaleDriver = new ADS1232Driver(
+        ADS1232_DOUT_PIN,
+        ADS1232_SCK_PIN,
+        ADS1232_PDWN_PIN,
+        ADS1232_SPEED_PIN
+    );
+#endif
+
+    scaleDriver->begin();
+    loadScaleSettings();
+    tareScale();
+}
+
+bool tareScale() {
+    if (!scaleDriver) return false;
+
+    bool ok = scaleDriver->tare();
+
+    if (ok) {
+        saveScaleSettings();
+    }
+
+    return ok;
+}
+
+float updateScale() {
+    if (!scaleDriver) return NAN;
+    return scaleDriver->read();
+}
+
+bool doCalibration(float referenceWeight) {
+    if (!scaleDriver) return false;
+    return scaleDriver->calibrate(referenceWeight);
+}
+
+float getFactor() {
+    if (!scaleDriver) return 0.0f;
+    return scaleDriver->getFactor();
+}
+
+bool setFactor(float newFactor) {
+    if (!scaleDriver) return false;
+
+    scaleDriver->setFactor(newFactor);
+    saveScaleSettings();
+
+    return true;
+}
+
+bool setOffset(float newOffset) {
+    if (!scaleDriver) return false;
+
+    scaleDriver->setOffset(newOffset);
+
+    return true;
+}
+
+float getOffset() {
+    if (!scaleDriver) return 0.0f;
+    return scaleDriver->getOffset();
 }

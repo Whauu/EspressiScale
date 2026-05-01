@@ -1,6 +1,8 @@
+#pragma once
+
 void setupScale();
 bool tareScale();
+bool doCalibration(float referenceWeight);
+bool setFactor(float newFactor);
 float updateScale();
-bool doCalibration(int referenceWeight);
-float getOffset();
-bool setOffset(float newOffset);
+float getFactor();
