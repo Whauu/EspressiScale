@@ -19,6 +19,7 @@ public:
     float getFactor() const override;
     void setFactor(float offset) override;
     float getOffset() override;
+    void setOffset(float offset) override;
 
 private:
     ADS1232 adc;

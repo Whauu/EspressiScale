@@ -18,6 +18,8 @@ public:
 
     float getFactor() const override;
     void setFactor(float offset) override;
+    void setOffset(float offset) override;
+    float getOffset() override;
 
 private:
     HX711 hx;

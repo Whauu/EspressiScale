@@ -13,6 +13,7 @@ public:
     virtual float getFactor() const = 0;
     virtual void setFactor(float offset) = 0;
     virtual float getOffset() = 0;
+    virtual void setOffset(float offset) = 0;
 
     virtual ~IScaleDriver() = default;
 };

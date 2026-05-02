@@ -133,3 +133,8 @@ void ADS1232Driver::setFactor(float newFactor) {
 float ADS1232Driver::getOffset() {
   return adc.get_offset();
 }
+
+void ADS1232Driver::setOffset(float newOffset) {
+    adc.set_offset(newOffset);
+    offset = newOffset;
+}
