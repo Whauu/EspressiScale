@@ -6,6 +6,7 @@
 #define LOADCELL_SCK_PIN   7
 #define LOADCELL_POWER_PIN 8
 #define LOADCELL_SPEED     4
+#define ADC_POWER_EN             6
 
 float calibration_factor = 1.0f; // Default value
 const int CALIBRATION_FACTOR_ADDR = 0; // EEPROM address
@@ -19,6 +20,9 @@ void setupScale(){
   if (isnan(calibration_factor) || calibration_factor == 0) {
     calibration_factor = 1; // Reset to default if invalid
   }
+  pinMode(ADC_POWER_EN, OUTPUT);
+  digitalWrite(ADC_POWER_EN, HIGH); // Power on the 4.5V LDO for the ADC
+  delay(100); // Wait for the ADC to stabilize
   pinMode(LOADCELL_POWER_PIN, OUTPUT);
   digitalWrite(LOADCELL_POWER_PIN, HIGH);
   scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN, LOADCELL_POWER_PIN, LOADCELL_SPEED, FAST);

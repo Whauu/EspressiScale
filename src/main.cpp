@@ -126,6 +126,7 @@ static void lv_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data
 // ============================
 // Deep Sleep
 // ============================
+/*
 const gpio_num_t holdPins[] = {
   GPIO_NUM_14,
   GPIO_NUM_15,
@@ -143,6 +144,12 @@ static void deep_sleep()
     gpio_hold_en(pin);
   }
   esp_deep_sleep_start();
+}
+*/
+
+static void deep_sleep() // Changed to completely power off the device to test ship mode and battery drain
+{
+  shipMode(); // Ensure battery is in ship mode before sleeping
 }
 
 // ============================
@@ -483,19 +490,19 @@ void setupBLE(void * parameter) {
 
 void setup()
 {
-  for (auto pin : holdPins) {
+  /*for (auto pin : holdPins) {
     gpio_hold_dis(pin);
-  }
+  }*/
   pinMode(38, OUTPUT); // Power enable pin
   digitalWrite(38, HIGH); // Enable power
 
-  touch_eg = xEventGroupCreate();
+  //touch_eg = xEventGroupCreate();
 
-  esp_sleep_enable_ext0_wakeup(GPIO_NUM_12, 0); // Touch interrupt is connected to GPIO 12
+  //esp_sleep_enable_ext0_wakeup(GPIO_NUM_1, 0); // Touch interrupt is connected to GPIO 1 - Wake button is active LOW
 
   Serial.begin(921600);
   Serial.println("HX711 with median filter and exponential smoothing");
-  jd9613_init();
+  /*jd9613_init();
   TFT_CS_0_L;
   lcd_PushColors(0, 0, 294, 126, (uint16_t *)espressiscale_right_map, 1);
   TFT_CS_0_H;
@@ -512,11 +519,11 @@ void setup()
 
   lv_disp_draw_buf_init(&draw_buf, buf, NULL, screenWidth * screenHeight);
 
-  /*Initialize the display*/
+  //Initialize the display
   static lv_disp_drv_t disp_drv;
   lv_disp_drv_init(&disp_drv);
 
-  /*Set the resolution of the display*/
+  //Set the resolution of the display
   disp_drv.hor_res = screenWidth;
   disp_drv.ver_res = screenHeight;
   disp_drv.flush_cb = my_disp_flush;
@@ -532,10 +539,10 @@ void setup()
   indev_drv.type = LV_INDEV_TYPE_POINTER;
   indev_drv.read_cb = lv_touchpad_read;
   lv_indev_drv_register(&indev_drv);
-
+*/
   setupScale();
   setupBattery();
-
+/*
   // Clear the display after showing the logo
   lv_obj_clean(lv_scr_act());
 
@@ -551,7 +558,7 @@ void setup()
   label_timer = lv_label_create(lv_scr_act());
   lv_obj_set_style_text_font(label_timer, &lv_font_montserrat_48, LV_PART_MAIN);
   lv_obj_align(label_timer, LV_ALIGN_LEFT_MID, 10, 0); // Align to the left
-
+*/
   xTaskCreatePinnedToCore(
     startWifi, // Function to run on this task
     "startWifi", // Task name
@@ -579,7 +586,7 @@ void loop()
   // Read filtered weight
   currentWeight = medianFilter();
   sendBleWeight(); // Send weight via BLE notification
-
+  /*
   // Update the label with the current weight
   char weight_str[16];
   snprintf(weight_str, sizeof(weight_str), "%.1f g", currentWeight);
@@ -660,11 +667,12 @@ void loop()
   // Handle LittlevGL tasks
   lv_task_handler();
   delay(5);
+  */
   static unsigned long last_activity_time = 0; // Last activity time
   static float lastWeight = currentWeight; // Last weight value
 
   // Check if the timer is not running and weight hasn't changed significantly
-  if (!timer_running && abs(currentWeight - lastWeight) < 1.0 && !EspressiOtaBLE::IsActive())
+  if (abs(currentWeight - lastWeight) < 1.0 && !EspressiOtaBLE::IsActive())
   {
     unsigned long current_time = millis();
     if (current_time - last_activity_time >= 300000) // 5 minutes

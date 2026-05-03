@@ -1,26 +1,31 @@
 #include <Arduino.h>
 #include "esp_adc_cal.h"
-#define BAT_ADC    2
+#include "BQ25896.h"
+#include <XPowersLib.h>
+#define XPOWERS_CHIP_BQ25896
+#define BQ27220_ADDR 0x55
+#define I2C_SDA 18
+#define I2C_SCL 17
 
 float voltage = 0.0;
 char voltage_String[10] = "";
-uint32_t readADC_Cal(int ADC_Raw);
+BQ25896  bq(Wire);
 
 void setupBattery(){
-    pinMode(15, OUTPUT);
-    digitalWrite(15, HIGH);
+    Wire.begin();
+    bq.begin();
+    bq.setBatLoad(ENABLED);
+    pinMode(2, OUTPUT); // Pin 2 controls power to the battery circuit
+    digitalWrite(2, HIGH); // Turn on the power to the battery circuit
+    delay(100); // Wait for the power to stabilize
 }
 
 float getBatteryVoltage(){
-    voltage = (readADC_Cal(analogRead(BAT_ADC)));
-    voltage = voltage * 0.002; // we use a voltage divider 1:1
-    return voltage;
+    return bq.getVBAT();
 }
 
-uint32_t readADC_Cal(int ADC_Raw)
-{
-    esp_adc_cal_characteristics_t adc_chars;
-
-    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_12, ADC_WIDTH_BIT_12, 1100, &adc_chars);
-    return (esp_adc_cal_raw_to_voltage(ADC_Raw, &adc_chars));
+void shipMode(){
+    bq.setBatLoad(DISABLED);
+    digitalWrite(2, LOW); // Turn off the power to the battery circuit
+    bq.setShipModeDelayed(); // Enter ship mode after a delay
 }
