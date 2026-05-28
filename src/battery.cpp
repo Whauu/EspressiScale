@@ -3,7 +3,6 @@
 #include "BQ25896.h"
 #include <XPowersLib.h>
 #define XPOWERS_CHIP_BQ25896
-#define BQ27220_ADDR 0x55
 #define I2C_SDA 18
 #define I2C_SCL 17
 #define OTG_PIN 2
@@ -13,7 +12,25 @@ char voltage_String[10] = "";
 BQ25896  bq(Wire);
 
 void setupBattery(){
-    Wire.begin();
+    Serial.begin(115200);
+    delay(1000);
+
+    Wire.begin(I2C_SDA, I2C_SCL);
+    Wire.setClock(100000);
+
+    Serial.println("I2C scan:");
+
+    for (uint8_t addr = 1; addr < 127; addr++) {
+        Wire.beginTransmission(addr);
+        uint8_t error = Wire.endTransmission();
+
+        if (error == 0) {
+            Serial.print("Found device at 0x");
+            if (addr < 16) Serial.print("0");
+            Serial.println(addr, HEX);
+        }
+    }
+    /*Wire.begin();
     bq.begin();
     bq.setBatLoad(ENABLED);
     pinMode(OTG_PIN, OUTPUT); // Pin 2 controls power to the battery circuit
@@ -21,7 +38,7 @@ void setupBattery(){
     delay(100); // Wait for OTG pin set high to stabilize
     bq.setOTGEnable(ENABLED); // Enable OTG power for the battery circuit
     delay(100); // Wait for the battery circuit to stabilize
-    printBQStatus();
+    printBQStatus();*/
 }
 
 float getBatteryVoltage(){
