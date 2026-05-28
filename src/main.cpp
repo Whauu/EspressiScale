@@ -52,7 +52,7 @@ extern uint8_t espressiscale_right_map[];
 // ============================
 // Display and Touch
 // ============================
-TouchLib touch(Wire, PIN_IIC_SDA, PIN_IIC_SCL, CTS820_SLAVE_ADDRESS);
+/*TouchLib touch(Wire, PIN_IIC_SDA, PIN_IIC_SCL, CTS820_SLAVE_ADDRESS);
 
 void my_print(const char *buf)
 {
@@ -108,7 +108,7 @@ static void lv_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data
     data->point.y = y;
     t.y = y;
 
-    /* Adjust black shadow areas. */
+    // Adjust black shadow areas. 
     if (t.x > 326)
       data->point.x = t.x - 32;
 
@@ -122,7 +122,7 @@ static void lv_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data
     data->state = LV_INDEV_STATE_REL;
   }
 }
-
+*/
 // ============================
 // Deep Sleep
 // ============================
@@ -540,8 +540,9 @@ void setup()
   indev_drv.read_cb = lv_touchpad_read;
   lv_indev_drv_register(&indev_drv);
 */
-  setupScale();
   setupBattery();
+  delay(100); // Ensure battery circuit is stable before powering the scale
+  setupScale();
 /*
   // Clear the display after showing the logo
   lv_obj_clean(lv_scr_act());

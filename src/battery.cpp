@@ -25,6 +25,7 @@ void setupBattery(){
 }
 
 float getBatteryVoltage(){
+    bq.properties();
     return bq.getVBAT();
 }
 
