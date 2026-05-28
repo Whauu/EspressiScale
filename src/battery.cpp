@@ -6,6 +6,7 @@
 #define BQ27220_ADDR 0x55
 #define I2C_SDA 18
 #define I2C_SCL 17
+#define OTG_PIN 2
 
 float voltage = 0.0;
 char voltage_String[10] = "";
@@ -15,9 +16,11 @@ void setupBattery(){
     Wire.begin();
     bq.begin();
     bq.setBatLoad(ENABLED);
-    pinMode(2, OUTPUT); // Pin 2 controls power to the battery circuit
-    digitalWrite(2, HIGH); // Turn on the power to the battery circuit
-    delay(100); // Wait for the power to stabilize
+    pinMode(OTG_PIN, OUTPUT); // Pin 2 controls power to the battery circuit
+    digitalWrite(OTG_PIN, HIGH); // Turn on the power to the battery circuit
+    delay(100); // Wait for OTG pin set high to stabilize
+    bq.setOTGEnable(ENABLED); // Enable OTG power for the battery circuit
+    delay(100); // Wait for the battery circuit to stabilize
 }
 
 float getBatteryVoltage(){
