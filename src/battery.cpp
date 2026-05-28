@@ -21,6 +21,7 @@ void setupBattery(){
     delay(100); // Wait for OTG pin set high to stabilize
     bq.setOTGEnable(ENABLED); // Enable OTG power for the battery circuit
     delay(100); // Wait for the battery circuit to stabilize
+    printBQStatus();
 }
 
 float getBatteryVoltage(){
@@ -29,6 +30,49 @@ float getBatteryVoltage(){
 
 void shipMode(){
     bq.setBatLoad(DISABLED);
-    digitalWrite(2, LOW); // Turn off the power to the battery circuit
+    digitalWrite(OTG_PIN, LOW); // Turn off the power to the battery circuit
+    bq.setOTGEnable(DISABLED); // Disable OTG power to ensure battery is fully powered down
     bq.setShipModeDelayed(); // Enter ship mode after a delay
+}
+
+void printBQStatus()
+{
+    bq.properties();
+
+    Serial.print("VBUS: ");
+    Serial.print(bq.getVBUS());
+    Serial.println(" V");
+
+    Serial.print("VSYS: ");
+    Serial.print(bq.getVSYS());
+    Serial.println(" V");
+
+    Serial.print("VBAT: ");
+    Serial.print(bq.getVBAT());
+    Serial.println(" V");
+
+    Serial.print("VBUS_STATUS: ");
+
+    switch (bq.getVBUS_STATUS())
+    {
+        case EmbeddedDevices::BQ25896<1>::VBUS_STAT::NO_INPUT:
+            Serial.println("NO_INPUT");
+            break;
+
+        case EmbeddedDevices::BQ25896<1>::VBUS_STAT::USB_HOST:
+            Serial.println("USB_HOST");
+            break;
+
+        case EmbeddedDevices::BQ25896<1>::VBUS_STAT::ADAPTER:
+            Serial.println("ADAPTER");
+            break;
+
+        case EmbeddedDevices::BQ25896<1>::VBUS_STAT::OTG:
+            Serial.println("OTG");
+            break;
+
+        default:
+            Serial.println("UNKNOWN");
+            break;
+    }
 }
