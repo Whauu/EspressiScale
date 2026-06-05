@@ -7,18 +7,25 @@
 <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/alpenkreuzer">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0f0f10;
-    --panel: #171719;
-    --panel-border: #2a2a2f;
-    --text: #f2eee7;
-    --muted: #b8b0a5;
-    --accent: #D95B29;
-    --accent-hover: #d4b282;
-    --danger: #ff7b7b;
-    --radius: 18px;
+    /* brewflow-ble coffee design language */
+    --background: hsl(25 25% 8%);
+    --card: hsl(25 20% 12%);
+    --card-border: hsl(25 25% 20%);
+    --foreground: hsl(0 0% 100%);
+    --muted-foreground: hsl(0 0% 80%);
+    --primary: hsl(25 40% 25%);
+    --accent: hsl(20 85% 60%);
+    --accent-soft: hsl(20 85% 60% / 0.18);
+    --espresso: hsl(25 30% 5%);
+    --danger: hsl(0 75% 55%);
+    --radius: 0.75rem;
+    --shadow-soft: 0 4px 20px hsl(0 0% 0% / 0.4);
+    --shadow-scale: 0 8px 40px hsl(0 0% 0% / 0.5);
+    --shadow-glow: 0 0 30px hsl(20 85% 60% / 0.4);
+    --transition-spring: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   * { box-sizing: border-box; }
@@ -30,26 +37,26 @@
     align-items: center;
     justify-content: center;
     background:
-      radial-gradient(circle at 20% 0%, rgba(200, 162, 106, 0.12), transparent 38%),
-      radial-gradient(circle at 95% 90%, rgba(200, 162, 106, 0.09), transparent 35%),
-      var(--bg);
-    color: var(--text);
+      radial-gradient(circle at 20% 0%, hsl(20 85% 60% / 0.12), transparent 38%),
+      radial-gradient(circle at 95% 90%, hsl(20 85% 60% / 0.09), transparent 35%),
+      var(--background);
+    color: var(--foreground);
     font-family: "Lato", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     padding: 1.5rem;
   }
 
   .card {
     width: min(560px, 100%);
-    background: linear-gradient(180deg, #1a1a1d 0%, #141416 100%);
-    border: 1px solid var(--panel-border);
-    border-radius: var(--radius);
-    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: calc(var(--radius) * 1.5);
+    box-shadow: var(--shadow-scale);
     padding: 2rem;
   }
 
   .brand {
     margin: 0;
-    color: var(--muted);
+    color: var(--muted-foreground);
     font-size: 0.85rem;
     letter-spacing: 0.22em;
     text-transform: uppercase;
@@ -61,19 +68,19 @@
     margin: 0.35rem 0 1rem;
     font-size: 3rem;
     line-height: 1.15;
-    font-weight: 650;
+    font-weight: 700;
     letter-spacing: -0.02em;
   }
 
   .msg {
     text-align: left;
-    background: #111115;
-    border: 1px solid #2f2f36;
-    border-radius: 14px;
+    background: var(--espresso);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
     padding: 1rem;
     line-height: 1.5;
     font-size: 0.95rem;
-    color: var(--text);
+    color: var(--foreground);
     min-height: 4.5rem;
     white-space: pre-wrap;
   }
@@ -86,23 +93,23 @@
     border: 1px solid transparent;
     border-radius: 999px;
     background: var(--accent);
-    color: #111;
+    color: var(--espresso);
     padding: 0.8rem 1.15rem;
     font-size: 0.97rem;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
-    transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
-    box-shadow: 0 8px 20px rgba(200, 162, 106, 0.22);
+    transition: var(--transition-spring);
+    box-shadow: var(--shadow-soft);
     margin-top: 1rem;
   }
 
   .btn:hover {
-    background: var(--accent-hover);
     transform: translateY(-1px);
+    box-shadow: var(--shadow-glow);
   }
 
   .btn:disabled {
-    opacity: 0.5;
+    opacity: 0.55;
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
@@ -110,7 +117,7 @@
 
   .note {
     font-size: 0.9rem;
-    color: var(--muted);
+    color: var(--muted-foreground);
     margin-top: 0.7rem;
   }
 
@@ -127,16 +134,16 @@
     font-size: 0.82rem;
     text-transform: uppercase;
     letter-spacing: 0.12em;
-    color: var(--muted);
+    color: var(--muted-foreground);
     font-weight: 600;
   }
 
   select {
     width: 100%;
     border-radius: 999px;
-    border: 1px solid #3a3942;
-    background: #101012;
-    color: var(--text);
+    border: 1px solid var(--card-border);
+    background: var(--espresso);
+    color: var(--foreground);
     padding: 0.65rem 0.9rem;
     font-size: 0.95rem;
     outline: none;
@@ -150,16 +157,17 @@
 
   .linkbtn {
     background: transparent;
-    color: var(--muted);
+    color: var(--muted-foreground);
     border: none;
     cursor: pointer;
     padding: 0.25rem 0.5rem;
     font-size: 0.93rem;
     border-radius: 8px;
+    transition: color 0.2s ease;
   }
 
   .linkbtn:hover {
-    color: var(--text);
+    color: var(--foreground);
   }
 </style>
 </head>

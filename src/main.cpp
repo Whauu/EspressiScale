@@ -168,6 +168,46 @@ void updateBatteryIcon(float pct)
 // Flow Calculation and Display
 // ============================
 
+// ---- Flow tuning knobs ----
+static constexpr unsigned long FLOW_WINDOW_MS = 150;   // sampling window for g/s calc
+static constexpr float         FLOW_ALPHA     = 0.40f; // EMA weight on flow target
+static constexpr unsigned long DOT_ANIM_MS    = 40;    // how often dots animate
+static float                   g_targetFlow   = 0.0f;  // produced by getFlow()
+
+// 5-stop color gradient indexed by dot-fill ratio (0..1).
+// Stops: red -> yellow -> green -> yellow -> red.
+struct FlowStop { float pos; uint8_t r, g, b; };
+static const FlowStop FLOW_STOPS[] = {
+  {0.00f, 0xFF, 0x20, 0x20}, // red (low)
+  {0.30f, 0xFF, 0xC0, 0x20}, // yellow
+  {0.50f, 0x30, 0xE0, 0x40}, // green (sweet spot)
+  {0.80f, 0xFF, 0xC0, 0x20}, // yellow
+  {1.00f, 0xFF, 0x20, 0x20}, // red (high)
+};
+static constexpr int FLOW_STOP_COUNT = sizeof(FLOW_STOPS) / sizeof(FLOW_STOPS[0]);
+
+static lv_color_t flowColorAt(float ratio)
+{
+  if (ratio < 0.0f) ratio = 0.0f;
+  if (ratio > 1.0f) ratio = 1.0f;
+
+  // Find surrounding stops and lerp
+  for (int i = 1; i < FLOW_STOP_COUNT; i++) {
+    if (ratio <= FLOW_STOPS[i].pos) {
+      const FlowStop &a = FLOW_STOPS[i - 1];
+      const FlowStop &b = FLOW_STOPS[i];
+      float span = b.pos - a.pos;
+      float t    = span > 0.0f ? (ratio - a.pos) / span : 0.0f;
+      uint8_t r = (uint8_t)(a.r + (b.r - a.r) * t);
+      uint8_t g = (uint8_t)(a.g + (b.g - a.g) * t);
+      uint8_t bl= (uint8_t)(a.b + (b.b - a.b) * t);
+      return lv_color_make(r, g, bl);
+    }
+  }
+  const FlowStop &last = FLOW_STOPS[FLOW_STOP_COUNT - 1];
+  return lv_color_make(last.r, last.g, last.b);
+}
+
 void updateFlowDots(float flow)
 {
   if (flow_label == NULL) return;
@@ -175,53 +215,65 @@ void updateFlowDots(float flow)
   if (flow < 0.0f) flow = 0.0f;
   if (flow > FLOW_MAX) flow = FLOW_MAX;
 
-  int dots = (int)((flow / FLOW_MAX) * FLOW_DOT_COUNT + 0.5f);
-  if (dots < 0) dots = 0;
-  if (dots > FLOW_DOT_COUNT) dots = FLOW_DOT_COUNT;
+  // Animate dot count toward target with a proportional step so big changes
+  // catch up quickly while small changes still single-step (no jitter).
+  static int displayedDots = 0;
+  int targetDots = (int)((flow / FLOW_MAX) * FLOW_DOT_COUNT + 0.5f);
+  if (targetDots < 0) targetDots = 0;
+  if (targetDots > FLOW_DOT_COUNT) targetDots = FLOW_DOT_COUNT;
+
+  int diff = targetDots - displayedDots;
+  if (diff != 0) {
+    int step = abs(diff) / 3;
+    if (step < 1) step = 1;
+    if (diff > 0) displayedDots += (step < diff ? step : diff);
+    else          displayedDots += (-step > diff ? -step : diff);
+  }
 
   String s = "";
-  for (int i = 0; i < dots; i++) {
+  for (int i = 0; i < displayedDots; i++) {
     s += "•";
   }
-
   lv_label_set_text(flow_label, s.c_str());
 
-  // Color coding: green for good flow, yellow for low flow, red for no flow or overflow
-  lv_color_t c;
-  if (flow < 0.75f) {
-    c = lv_color_hex(0xf800);   // red
-  }
-  else if (flow < 1.0f) {
-    c = lv_color_hex(0xfde0);   // yellow
-  }
-  else if (flow <= 2.0f) {
-    c = lv_color_hex(0x07e0);   // green
-  }
-  else if (flow <= 2.25f) {
-    c = lv_color_hex(0xfde0);   // yellow
-  }
-  else {
-    c = lv_color_hex(0xf800);   // red
-  }
+  // Color from the rightmost (latest) dot's position on the gradient.
+  // Matches what the user is visually tracking and stays in sync with dots.
+  float ratio = (FLOW_DOT_COUNT > 0)
+                  ? (float)displayedDots / (float)FLOW_DOT_COUNT
+                  : 0.0f;
+  lv_color_t c = flowColorAt(ratio);
   lv_obj_set_style_text_color(flow_label, c, LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_invalidate(flow_label);
 }
 
+// Animation tick — call from loop(). Renders dots toward g_targetFlow
+// independently of the sampling window so motion stays smooth.
+void tickFlowAnimation()
+{
+  static unsigned long lastAnim = 0;
+  unsigned long now = millis();
+  if (now - lastAnim < DOT_ANIM_MS) return;
+  lastAnim = now;
+  updateFlowDots(g_targetFlow);
+}
+
 void getFlow()
 {
-  static float lastWeightForFlow = currentWeight;
-  static unsigned long lastFlowTime = millis();
+  // Sample weight delta over a fixed window, then EMA the resulting g/s.
+  // Produces g_targetFlow; the animation tick handles rendering.
+  static float         lastWeightForFlow = currentWeight;
+  static unsigned long lastFlowTime      = millis();
 
-  unsigned long currentTime = millis();
-  unsigned long timeDelta = currentTime - lastFlowTime;
+  unsigned long now = millis();
+  unsigned long dt  = now - lastFlowTime;
+  if (dt < FLOW_WINDOW_MS) return;
 
-  if (timeDelta > 0) {
-    float weightDelta = currentWeight - lastWeightForFlow;
-    float flow = (weightDelta / (timeDelta / 1000.0f)); // grams per second
-    updateFlowDots(flow);
-    lastWeightForFlow = currentWeight;
-    lastFlowTime = currentTime;
-  }
+  float weightDelta = currentWeight - lastWeightForFlow;
+  float rawFlow     = weightDelta / (dt / 1000.0f); // grams per second
+  lastWeightForFlow = currentWeight;
+  lastFlowTime      = now;
+
+  g_targetFlow = FLOW_ALPHA * rawFlow + (1.0f - FLOW_ALPHA) * g_targetFlow;
 }
 
 // ============================
@@ -673,7 +725,9 @@ void loop()
   // Read filtered weight
   currentWeight = medianFilter();
   sendBleWeight(); // Send weight via BLE notification
-  getFlow(); // Update flow dots based on weight change
+  getFlow();           // Update flow target value (sampled, smoothed)
+  tickFlowAnimation(); // Animate dots toward target (~40ms cadence)
+  tickScale();          // Handle HX711 timing and reading
 
   // Update the label with the current weight
   char weight_str[16];
@@ -719,8 +773,8 @@ void loop()
     // If touch is still held and >1000ms
     if (millis() - touchStart > 1000) {
       Serial.println("Long press detected");
-      lv_task_handler(); // Ensure LVGL updates the display
       lv_label_set_text(label_weight, "Deep Sleep");
+      lv_task_handler(); // Ensure LVGL updates the display
       delay(2000); // Wait for 2 seconds to show the message
       if (!touch.read()) {
         Serial.println("Entering deep sleep");
